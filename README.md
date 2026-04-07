@@ -2,7 +2,9 @@
 
 Sub-title: AI-Powered LinkedIn Prospecting Engine (Go + AWS + LLM)
 
- 1. Project Overview
+ 1. [Quickstart](docs/quickstart.md) — get running locally in under five minutes.
+
+ 2. Project Overview
 In-Network-Explorer is a specialized lead-generation and networking tool for IT professionals in Berlin. It uses a Go-based scraper to identify relevant local peers, evaluates their professional alignment using AI, and drafts hyper-personalized connection requests.
 
 The Golden Rule: The system prepares the data; the human performs the final outreach to maintain account integrity.
