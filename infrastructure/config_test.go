@@ -128,7 +128,7 @@ func TestMustLoad_DefaultValues(t *testing.T) {
 func TestConfig_ChromeBinDefault(t *testing.T) {
 	withDotEnv(t, "")
 	requiredEnvVars(t)
-	// CHROME_BIN not set — should be empty (auto-detect)
+	t.Setenv("CHROME_BIN", "") // explicitly clear — CI runners may have this set
 
 	cfg := MustLoad()
 
@@ -140,7 +140,7 @@ func TestLoadDotEnv_SetsVarsFromFile(t *testing.T) {
 	envFile := filepath.Join(dir, ".env")
 	os.WriteFile(envFile, []byte("FOO=bar\nBAZ=qux\n"), 0o644)
 
-	t.Setenv("FOO", "")  // ensure clean
+	t.Setenv("FOO", "") // ensure clean
 	t.Setenv("BAZ", "")
 	os.Unsetenv("FOO")
 	os.Unsetenv("BAZ")

@@ -37,9 +37,9 @@ type Config struct {
 	// Operational
 	MaxProfileViewsPerDay   int    // MAX_PROFILE_VIEWS_PER_DAY, default: 40
 	MaxConnectionReqsPerDay int    // MAX_CONNECTION_REQS_PER_DAY, default: 10
-	MaxProspectsPerRun       int    // MAX_PROSPECTS_PER_RUN, default: 20
-	AnalyzeConcurrency       int    // ANALYZE_CONCURRENCY, default: 3
-	PromptConfigPath         string // PROMPT_CONFIG_PATH, default: prompts/scoring.json
+	MaxProspectsPerRun      int    // MAX_PROSPECTS_PER_RUN, default: 20
+	AnalyzeConcurrency      int    // ANALYZE_CONCURRENCY, default: 3
+	PromptConfigPath        string // PROMPT_CONFIG_PATH, default: prompts/scoring.json
 }
 
 // MustLoad loads a .env file (if present) and reads all configuration from
@@ -67,9 +67,9 @@ func MustLoad() Config {
 
 		MaxProfileViewsPerDay:   envOrDefaultInt("MAX_PROFILE_VIEWS_PER_DAY", 40),
 		MaxConnectionReqsPerDay: envOrDefaultInt("MAX_CONNECTION_REQS_PER_DAY", 10),
-		MaxProspectsPerRun:       envOrDefaultInt("MAX_PROSPECTS_PER_RUN", 20),
-		AnalyzeConcurrency:       envOrDefaultInt("ANALYZE_CONCURRENCY", 3),
-		PromptConfigPath:         envOrDefault("PROMPT_CONFIG_PATH", "prompts/scoring.json"),
+		MaxProspectsPerRun:      envOrDefaultInt("MAX_PROSPECTS_PER_RUN", 20),
+		AnalyzeConcurrency:      envOrDefaultInt("ANALYZE_CONCURRENCY", 3),
+		PromptConfigPath:        envOrDefault("PROMPT_CONFIG_PATH", "prompts/scoring.json"),
 	}
 
 	cfg.BedrockRegion = envOrDefault("BEDROCK_REGION", cfg.AWSRegion)
