@@ -268,4 +268,3 @@ func (s *FakeEmbeddingStore) UpsertedIDs() []string {
 	slices.Sort(ids)
 	return ids
 }
-
