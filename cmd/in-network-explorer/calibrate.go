@@ -7,6 +7,6 @@ import (
 	"github.com/pavlomaksymov/in-network-explorer/infrastructure"
 )
 
-func runCalibrate(ctx context.Context, cfg infrastructure.Config) {
-	slog.InfoContext(ctx, "not yet implemented", "command", "calibrate")
+func runCalibrate(ctx context.Context, cfg infrastructure.Config, log *slog.Logger) {
+	log.InfoContext(ctx, "not yet implemented", "command", "calibrate")
 }
