@@ -27,7 +27,7 @@ func withDotEnv(t *testing.T, content string) {
 	if err := os.WriteFile(".env", []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { os.Remove(".env") })
+	t.Cleanup(func() { _ = os.Remove(".env") })
 }
 
 func TestMustLoad_AllPresent(t *testing.T) {
@@ -83,7 +83,7 @@ func TestMustLoad_MissingRequired(t *testing.T) {
 		t.Run(envVar, func(t *testing.T) {
 			withDotEnv(t, "")
 			requiredEnvVars(t)
-			os.Unsetenv(envVar)
+			_ = os.Unsetenv(envVar)
 			t.Setenv(envVar+"_SENTINEL", "") // force cleanup via t.Setenv side-effect
 
 			defer func() {
@@ -138,16 +138,18 @@ func TestConfig_ChromeBinDefault(t *testing.T) {
 func TestLoadDotEnv_SetsVarsFromFile(t *testing.T) {
 	dir := t.TempDir()
 	envFile := filepath.Join(dir, ".env")
-	os.WriteFile(envFile, []byte("FOO=bar\nBAZ=qux\n"), 0o644)
+	if err := os.WriteFile(envFile, []byte("FOO=bar\nBAZ=qux\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 
 	t.Setenv("FOO", "") // ensure clean
 	t.Setenv("BAZ", "")
-	os.Unsetenv("FOO")
-	os.Unsetenv("BAZ")
+	_ = os.Unsetenv("FOO")
+	_ = os.Unsetenv("BAZ")
 
 	loadDotEnv(envFile)
-	defer os.Unsetenv("FOO")
-	defer os.Unsetenv("BAZ")
+	defer func() { _ = os.Unsetenv("FOO") }()
+	defer func() { _ = os.Unsetenv("BAZ") }()
 
 	if got := os.Getenv("FOO"); got != "bar" {
 		t.Errorf("FOO = %q, want %q", got, "bar")
@@ -160,7 +162,9 @@ func TestLoadDotEnv_SetsVarsFromFile(t *testing.T) {
 func TestLoadDotEnv_DoesNotOverrideExisting(t *testing.T) {
 	dir := t.TempDir()
 	envFile := filepath.Join(dir, ".env")
-	os.WriteFile(envFile, []byte("MY_VAR=from-file\n"), 0o644)
+	if err := os.WriteFile(envFile, []byte("MY_VAR=from-file\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 
 	t.Setenv("MY_VAR", "from-env")
 
@@ -175,12 +179,14 @@ func TestLoadDotEnv_SkipsCommentsAndBlanks(t *testing.T) {
 	dir := t.TempDir()
 	envFile := filepath.Join(dir, ".env")
 	content := "# this is a comment\n\n  \nVALID_KEY=value\n# another comment\n"
-	os.WriteFile(envFile, []byte(content), 0o644)
+	if err := os.WriteFile(envFile, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
 
-	os.Unsetenv("VALID_KEY")
+	_ = os.Unsetenv("VALID_KEY")
 
 	loadDotEnv(envFile)
-	defer os.Unsetenv("VALID_KEY")
+	defer func() { _ = os.Unsetenv("VALID_KEY") }()
 
 	if got := os.Getenv("VALID_KEY"); got != "value" {
 		t.Errorf("VALID_KEY = %q, want %q", got, "value")

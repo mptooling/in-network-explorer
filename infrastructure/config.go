@@ -112,7 +112,7 @@ func loadDotEnv(path string) {
 	if err != nil {
 		panic(err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
@@ -129,6 +129,6 @@ func loadDotEnv(path string) {
 		if _, exists := os.LookupEnv(key); exists {
 			continue // never override existing env
 		}
-		os.Setenv(key, value)
+		_ = os.Setenv(key, value)
 	}
 }
