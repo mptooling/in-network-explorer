@@ -21,6 +21,10 @@ type Config struct {
 	// LinkedIn
 	LinkedInCookiesSecret string // LINKEDIN_COOKIES_SECRET, required (Secrets Manager ARN)
 
+	// Local development overrides (optional, empty = use real AWS)
+	DynamoEndpoint  string // DYNAMO_ENDPOINT, optional (e.g., http://localhost:8000)
+	SecretsEndpoint string // SECRETS_ENDPOINT, optional (e.g., http://localhost:4566)
+
 	// Proxy
 	ProxyAddr string // PROXY_ADDR, optional (host:port)
 	ProxyUser string // PROXY_USER, optional
@@ -56,6 +60,9 @@ func MustLoad() Config {
 		ChromeProfileDir:      required("CHROME_PROFILE_DIR"),
 
 		BedrockModelID: envOrDefault("BEDROCK_MODEL_ID", "anthropic.claude-haiku-4-5-20251001-v1:0"),
+
+		DynamoEndpoint:  os.Getenv("DYNAMO_ENDPOINT"),
+		SecretsEndpoint: os.Getenv("SECRETS_ENDPOINT"),
 
 		ProxyAddr: os.Getenv("PROXY_ADDR"),
 		ProxyUser: os.Getenv("PROXY_USER"),
