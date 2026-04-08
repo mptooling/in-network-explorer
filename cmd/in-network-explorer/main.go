@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -10,6 +12,13 @@ import (
 
 	"github.com/pavlomaksymov/in-network-explorer/infrastructure"
 )
+
+// newLogger creates a structured JSON logger pre-configured with the given
+// run_id field. Every log line emitted through this logger (or loggers
+// derived from it via With) includes the run_id for correlation.
+func newLogger(w io.Writer, runID string) *slog.Logger {
+	return slog.New(slog.NewJSONHandler(w, nil)).With("run_id", runID)
+}
 
 func main() {
 	if len(os.Args) < 2 {
@@ -30,17 +39,16 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	log := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	slog.SetDefault(log)
+	log := newLogger(os.Stdout, rand.Text())
 
 	switch cmd {
 	case "scrape":
-		runScrape(ctx, cfg)
+		runScrape(ctx, cfg, log)
 	case "analyze":
-		runAnalyze(ctx, cfg)
+		runAnalyze(ctx, cfg, log)
 	case "report":
-		runReport(ctx, cfg)
+		runReport(ctx, cfg, log)
 	case "calibrate":
-		runCalibrate(ctx, cfg)
+		runCalibrate(ctx, cfg, log)
 	}
 }
