@@ -33,6 +33,8 @@ func withDotEnv(t *testing.T, content string) {
 func TestMustLoad_AllPresent(t *testing.T) {
 	withDotEnv(t, "")
 	requiredEnvVars(t)
+	t.Setenv("DYNAMO_ENDPOINT", "http://localhost:8000")
+	t.Setenv("SECRETS_ENDPOINT", "http://localhost:4566")
 	t.Setenv("BEDROCK_MODEL_ID", "anthropic.claude-3-sonnet-20240229-v1:0")
 	t.Setenv("BEDROCK_REGION", "us-east-1")
 	t.Setenv("PROXY_ADDR", "proxy.example.com:8080")
@@ -54,6 +56,10 @@ func TestMustLoad_AllPresent(t *testing.T) {
 	assertEqual(t, "DynamoTableName", cfg.DynamoTableName, "prospects")
 	assertEqual(t, "LinkedInCookiesSecret", cfg.LinkedInCookiesSecret, "arn:aws:secretsmanager:eu-central-1:123456789:secret:li-cookies")
 	assertEqual(t, "ChromeProfileDir", cfg.ChromeProfileDir, "/tmp/chrome-profile")
+
+	// Local development overrides
+	assertEqual(t, "DynamoEndpoint", cfg.DynamoEndpoint, "http://localhost:8000")
+	assertEqual(t, "SecretsEndpoint", cfg.SecretsEndpoint, "http://localhost:4566")
 
 	// Explicit overrides
 	assertEqual(t, "BedrockModelID", cfg.BedrockModelID, "anthropic.claude-3-sonnet-20240229-v1:0")
@@ -108,11 +114,16 @@ func TestMustLoad_MissingRequired(t *testing.T) {
 func TestMustLoad_DefaultValues(t *testing.T) {
 	withDotEnv(t, "")
 	requiredEnvVars(t)
+	// Explicitly clear optional vars that may leak from integration test env.
+	t.Setenv("DYNAMO_ENDPOINT", "")
+	t.Setenv("SECRETS_ENDPOINT", "")
 
 	cfg := MustLoad()
 
 	assertEqual(t, "BedrockModelID", cfg.BedrockModelID, "anthropic.claude-haiku-4-5-20251001-v1:0")
 	assertEqual(t, "BedrockRegion", cfg.BedrockRegion, "eu-central-1") // defaults to AWSRegion
+	assertEqual(t, "DynamoEndpoint", cfg.DynamoEndpoint, "")
+	assertEqual(t, "SecretsEndpoint", cfg.SecretsEndpoint, "")
 	assertEqual(t, "ProxyAddr", cfg.ProxyAddr, "")
 	assertEqual(t, "ProxyUser", cfg.ProxyUser, "")
 	assertEqual(t, "ProxyPass", cfg.ProxyPass, "")

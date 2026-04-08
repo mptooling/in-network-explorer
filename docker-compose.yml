@@ -1,0 +1,58 @@
+services:
+  dynamodb-local:
+    image: amazon/dynamodb-local:latest
+    ports:
+      - "8881:8000"
+    command: "-jar DynamoDBLocal.jar -sharedDb -inMemory"
+    healthcheck:
+      test: ["CMD-SHELL", "{ echo > /dev/tcp/localhost/8000; } 2>/dev/null || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  localstack:
+    image: localstack/localstack:3.8.1
+    ports:
+      - "4566:4566"
+    environment:
+      SERVICES: secretsmanager
+      DEFAULT_REGION: eu-central-1
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:4566/_localstack/health || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant-data:/qdrant/storage
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c '{ echo > /dev/tcp/localhost/6333; } 2>/dev/null || exit 1'"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  setup:
+    image: amazon/aws-cli:latest
+    depends_on:
+      dynamodb-local:
+        condition: service_healthy
+      localstack:
+        condition: service_healthy
+    environment:
+      AWS_ACCESS_KEY_ID: local
+      AWS_SECRET_ACCESS_KEY: local
+      AWS_DEFAULT_REGION: eu-central-1
+      DYNAMO_ENDPOINT: http://dynamodb-local:8000
+      SECRETS_ENDPOINT: http://localstack:4566
+    volumes:
+      - ./scripts:/scripts:ro
+    entrypoint: /bin/sh
+    command: ["/scripts/local-setup.sh"]
+
+volumes:
+  qdrant-data:
