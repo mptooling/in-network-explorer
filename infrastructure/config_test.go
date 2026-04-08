@@ -114,6 +114,9 @@ func TestMustLoad_MissingRequired(t *testing.T) {
 func TestMustLoad_DefaultValues(t *testing.T) {
 	withDotEnv(t, "")
 	requiredEnvVars(t)
+	// Explicitly clear optional vars that may leak from integration test env.
+	t.Setenv("DYNAMO_ENDPOINT", "")
+	t.Setenv("SECRETS_ENDPOINT", "")
 
 	cfg := MustLoad()
 
