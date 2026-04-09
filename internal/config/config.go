@@ -1,6 +1,6 @@
-// Package infrastructure provides adapters for external systems: AWS clients,
-// configuration loading, and other runtime dependencies.
-package infrastructure
+// Package config provides application configuration loading and AWS client
+// construction.
+package config
 
 import (
 	"bufio"

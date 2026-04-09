@@ -1,25 +1,25 @@
-package domain_test
+package explorer_test
 
 import (
 	"errors"
 	"testing"
 	"time"
 
-	"github.com/pavlomaksymov/in-network-explorer/domain"
+	explorer "github.com/pavlomaksymov/in-network-explorer/internal"
 )
 
 func TestProspect_State_String(t *testing.T) {
 	cases := []struct {
-		state domain.State
+		state explorer.State
 		want  string
 	}{
-		{domain.StateScanned, "SCANNED"},
-		{domain.StateLiked, "LIKED"},
-		{domain.StateDrafted, "DRAFTED"},
-		{domain.StateSent, "SENT"},
-		{domain.StateAccepted, "ACCEPTED"},
-		{domain.StateRejected, "REJECTED"},
-		{domain.StateSkipped, "SKIPPED"},
+		{explorer.StateScanned, "SCANNED"},
+		{explorer.StateLiked, "LIKED"},
+		{explorer.StateDrafted, "DRAFTED"},
+		{explorer.StateSent, "SENT"},
+		{explorer.StateAccepted, "ACCEPTED"},
+		{explorer.StateRejected, "REJECTED"},
+		{explorer.StateSkipped, "SKIPPED"},
 	}
 	for _, tc := range cases {
 		if got := tc.state.String(); got != tc.want {
@@ -31,19 +31,19 @@ func TestProspect_State_String(t *testing.T) {
 func TestProspect_Transition_Valid(t *testing.T) {
 	cases := []struct {
 		name string
-		from domain.State
-		to   domain.State
+		from explorer.State
+		to   explorer.State
 	}{
-		{"Scanned→Liked", domain.StateScanned, domain.StateLiked},
-		{"Scanned→Skipped", domain.StateScanned, domain.StateSkipped},
-		{"Liked→Drafted", domain.StateLiked, domain.StateDrafted},
-		{"Drafted→Sent", domain.StateDrafted, domain.StateSent},
-		{"Sent→Accepted", domain.StateSent, domain.StateAccepted},
-		{"Sent→Rejected", domain.StateSent, domain.StateRejected},
+		{"Scanned→Liked", explorer.StateScanned, explorer.StateLiked},
+		{"Scanned→Skipped", explorer.StateScanned, explorer.StateSkipped},
+		{"Liked→Drafted", explorer.StateLiked, explorer.StateDrafted},
+		{"Drafted→Sent", explorer.StateDrafted, explorer.StateSent},
+		{"Sent→Accepted", explorer.StateSent, explorer.StateAccepted},
+		{"Sent→Rejected", explorer.StateSent, explorer.StateRejected},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			p := &domain.Prospect{State: tc.from}
+			p := &explorer.Prospect{State: tc.from}
 			if err := p.Transition(tc.to); err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
@@ -57,20 +57,20 @@ func TestProspect_Transition_Valid(t *testing.T) {
 func TestProspect_Transition_Invalid(t *testing.T) {
 	cases := []struct {
 		name string
-		from domain.State
-		to   domain.State
+		from explorer.State
+		to   explorer.State
 	}{
-		{"Scanned→Drafted", domain.StateScanned, domain.StateDrafted},
-		{"Liked→Accepted", domain.StateLiked, domain.StateAccepted},
-		{"Accepted→Sent", domain.StateAccepted, domain.StateSent},
-		{"Rejected→Sent", domain.StateRejected, domain.StateSent},
-		{"Skipped→Liked", domain.StateSkipped, domain.StateLiked},
+		{"Scanned→Drafted", explorer.StateScanned, explorer.StateDrafted},
+		{"Liked→Accepted", explorer.StateLiked, explorer.StateAccepted},
+		{"Accepted→Sent", explorer.StateAccepted, explorer.StateSent},
+		{"Rejected→Sent", explorer.StateRejected, explorer.StateSent},
+		{"Skipped→Liked", explorer.StateSkipped, explorer.StateLiked},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			p := &domain.Prospect{State: tc.from}
+			p := &explorer.Prospect{State: tc.from}
 			err := p.Transition(tc.to)
-			if !errors.Is(err, domain.ErrInvalidTransition) {
+			if !errors.Is(err, explorer.ErrInvalidTransition) {
 				t.Fatalf("expected ErrInvalidTransition, got %v", err)
 			}
 		})
@@ -79,9 +79,9 @@ func TestProspect_Transition_Invalid(t *testing.T) {
 
 func TestProspect_Transition_UpdatesFields(t *testing.T) {
 	t.Run("LastActionAt changes after transition", func(t *testing.T) {
-		p := &domain.Prospect{State: domain.StateScanned}
+		p := &explorer.Prospect{State: explorer.StateScanned}
 		before := time.Now()
-		if err := p.Transition(domain.StateLiked); err != nil {
+		if err := p.Transition(explorer.StateLiked); err != nil {
 			t.Fatal(err)
 		}
 		if p.LastActionAt.Before(before) {
@@ -90,12 +90,12 @@ func TestProspect_Transition_UpdatesFields(t *testing.T) {
 	})
 
 	t.Run("NextActionAt is in future (≥20h) after StateScanned", func(t *testing.T) {
-		p := &domain.Prospect{State: domain.StateScanned}
+		p := &explorer.Prospect{State: explorer.StateScanned}
 		// We need to call Transition to a non-terminal state from a state that
 		// leads to StateScanned being the origin. Actually StateScanned is the
 		// initial state — test NextActionAt after inserting as new prospect.
 		// Reconstruct: fresh prospect transitions to Liked, check NextActionAt.
-		if err := p.Transition(domain.StateLiked); err != nil {
+		if err := p.Transition(explorer.StateLiked); err != nil {
 			t.Fatal(err)
 		}
 		minNext := time.Now().Add(20 * time.Hour)
@@ -105,8 +105,8 @@ func TestProspect_Transition_UpdatesFields(t *testing.T) {
 	})
 
 	t.Run("NextActionAt is in future (≥20h) after StateLiked", func(t *testing.T) {
-		p := &domain.Prospect{State: domain.StateLiked}
-		if err := p.Transition(domain.StateDrafted); err != nil {
+		p := &explorer.Prospect{State: explorer.StateLiked}
+		if err := p.Transition(explorer.StateDrafted); err != nil {
 			t.Fatal(err)
 		}
 		minNext := time.Now().Add(20 * time.Hour)
@@ -117,15 +117,15 @@ func TestProspect_Transition_UpdatesFields(t *testing.T) {
 
 	t.Run("NextActionAt is zero for terminal states", func(t *testing.T) {
 		cases := []struct {
-			from domain.State
-			to   domain.State
+			from explorer.State
+			to   explorer.State
 		}{
-			{domain.StateSent, domain.StateAccepted},
-			{domain.StateSent, domain.StateRejected},
-			{domain.StateScanned, domain.StateSkipped},
+			{explorer.StateSent, explorer.StateAccepted},
+			{explorer.StateSent, explorer.StateRejected},
+			{explorer.StateScanned, explorer.StateSkipped},
 		}
 		for _, tc := range cases {
-			p := &domain.Prospect{State: tc.from}
+			p := &explorer.Prospect{State: tc.from}
 			if err := p.Transition(tc.to); err != nil {
 				t.Fatal(err)
 			}

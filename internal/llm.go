@@ -1,4 +1,4 @@
-package domain
+package explorer
 
 import "context"
 
@@ -19,7 +19,7 @@ type ScoreResult struct {
 }
 
 // LLMClient abstracts the AI backend (Bedrock, OpenAI, etc.).
-// Implementations live in adapter/bedrock.
+// Implementations live in internal/bedrock.
 type LLMClient interface {
 	// ScoreAndDraft scores the prospect against the target persona and drafts a
 	// personalised connection message. examples are high-scoring reference

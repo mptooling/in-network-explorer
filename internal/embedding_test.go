@@ -1,16 +1,16 @@
-package domain_test
+package explorer_test
 
 import (
 	"context"
 
-	"github.com/pavlomaksymov/in-network-explorer/domain"
+	explorer "github.com/pavlomaksymov/in-network-explorer/internal"
 )
 
 // Compile-time checks: fakeEmbeddingClient and fakeEmbeddingStore must satisfy
 // the respective interfaces.
 
-var _ domain.EmbeddingClient = (*fakeEmbeddingClient)(nil)
-var _ domain.EmbeddingStore = (*fakeEmbeddingStore)(nil)
+var _ explorer.EmbeddingClient = (*fakeEmbeddingClient)(nil)
+var _ explorer.EmbeddingStore = (*fakeEmbeddingStore)(nil)
 
 type fakeEmbeddingClient struct{}
 
@@ -23,6 +23,6 @@ type fakeEmbeddingStore struct{}
 func (f *fakeEmbeddingStore) Upsert(_ context.Context, _ string, _ []float32, _ map[string]any) error {
 	return nil
 }
-func (f *fakeEmbeddingStore) SearchSimilar(_ context.Context, _ []float32, _ map[string]any, _ int) ([]*domain.Prospect, error) {
+func (f *fakeEmbeddingStore) SearchSimilar(_ context.Context, _ []float32, _ map[string]any, _ int) ([]*explorer.Prospect, error) {
 	return nil, nil
 }

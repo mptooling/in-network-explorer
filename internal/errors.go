@@ -1,6 +1,6 @@
-// Package domain contains the core business entities, value objects, and
+// Package explorer contains the core business entities, value objects, and
 // interfaces for the in-network-explorer prospect pipeline.
-package domain
+package explorer
 
 import "errors"
 

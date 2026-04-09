@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pavlomaksymov/in-network-explorer/domain"
+	explorer "github.com/pavlomaksymov/in-network-explorer/internal"
 	"github.com/pavlomaksymov/in-network-explorer/internal/testdouble"
 )
 
@@ -13,9 +13,9 @@ import (
 
 func TestFakeProspectRepository_SaveAndGet(t *testing.T) {
 	repo := testdouble.NewFakeProspectRepository()
-	p := &domain.Prospect{
+	p := &explorer.Prospect{
 		ProfileURL: "https://linkedin.com/in/alice",
-		State:      domain.StateScanned,
+		State:      explorer.StateScanned,
 	}
 	if err := repo.Save(context.Background(), p); err != nil {
 		t.Fatalf("Save: %v", err)
@@ -39,7 +39,7 @@ func TestFakeProspectRepository_Get_NotFound(t *testing.T) {
 
 func TestFakeProspectRepository_InsertIfNew(t *testing.T) {
 	repo := testdouble.NewFakeProspectRepository()
-	p := &domain.Prospect{ProfileURL: "https://linkedin.com/in/bob", State: domain.StateScanned}
+	p := &explorer.Prospect{ProfileURL: "https://linkedin.com/in/bob", State: explorer.StateScanned}
 
 	inserted, err := repo.InsertIfNew(context.Background(), p)
 	if err != nil {
@@ -62,29 +62,29 @@ func TestFakeProspectRepository_ListByState(t *testing.T) {
 	repo := testdouble.NewFakeProspectRepository()
 	now := time.Now()
 
-	scannedDue := &domain.Prospect{
+	scannedDue := &explorer.Prospect{
 		ProfileURL:   "https://linkedin.com/in/due",
-		State:        domain.StateScanned,
+		State:        explorer.StateScanned,
 		NextActionAt: now.Add(-1 * time.Hour), // overdue
 	}
-	scannedFuture := &domain.Prospect{
+	scannedFuture := &explorer.Prospect{
 		ProfileURL:   "https://linkedin.com/in/future",
-		State:        domain.StateScanned,
+		State:        explorer.StateScanned,
 		NextActionAt: now.Add(24 * time.Hour), // not due yet
 	}
-	liked := &domain.Prospect{
+	liked := &explorer.Prospect{
 		ProfileURL:   "https://linkedin.com/in/liked",
-		State:        domain.StateLiked,
+		State:        explorer.StateLiked,
 		NextActionAt: now.Add(-1 * time.Hour),
 	}
 
-	for _, p := range []*domain.Prospect{scannedDue, scannedFuture, liked} {
+	for _, p := range []*explorer.Prospect{scannedDue, scannedFuture, liked} {
 		if err := repo.Save(context.Background(), p); err != nil {
 			t.Fatal(err)
 		}
 	}
 
-	results, err := repo.ListByState(context.Background(), domain.StateScanned, now)
+	results, err := repo.ListByState(context.Background(), explorer.StateScanned, now)
 	if err != nil {
 		t.Fatalf("ListByState: %v", err)
 	}
@@ -99,10 +99,10 @@ func TestFakeProspectRepository_ListByState(t *testing.T) {
 func TestFakeProspectRepository_ListByStateOrderedByScore(t *testing.T) {
 	repo := testdouble.NewFakeProspectRepository()
 
-	prospects := []*domain.Prospect{
-		{ProfileURL: "https://linkedin.com/in/score5", State: domain.StateDrafted, WorthinessScore: 5},
-		{ProfileURL: "https://linkedin.com/in/score9", State: domain.StateDrafted, WorthinessScore: 9},
-		{ProfileURL: "https://linkedin.com/in/score3", State: domain.StateDrafted, WorthinessScore: 3},
+	prospects := []*explorer.Prospect{
+		{ProfileURL: "https://linkedin.com/in/score5", State: explorer.StateDrafted, WorthinessScore: 5},
+		{ProfileURL: "https://linkedin.com/in/score9", State: explorer.StateDrafted, WorthinessScore: 9},
+		{ProfileURL: "https://linkedin.com/in/score3", State: explorer.StateDrafted, WorthinessScore: 3},
 	}
 	for _, p := range prospects {
 		if err := repo.Save(context.Background(), p); err != nil {
@@ -110,7 +110,7 @@ func TestFakeProspectRepository_ListByStateOrderedByScore(t *testing.T) {
 		}
 	}
 
-	results, err := repo.ListByStateOrderedByScore(context.Background(), domain.StateDrafted, 10)
+	results, err := repo.ListByStateOrderedByScore(context.Background(), explorer.StateDrafted, 10)
 	if err != nil {
 		t.Fatalf("ListByStateOrderedByScore: %v", err)
 	}

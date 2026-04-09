@@ -4,9 +4,9 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/pavlomaksymov/in-network-explorer/infrastructure"
+	"github.com/pavlomaksymov/in-network-explorer/internal/config"
 )
 
-func runCalibrate(ctx context.Context, cfg infrastructure.Config, log *slog.Logger) {
+func runCalibrate(ctx context.Context, cfg config.Config, log *slog.Logger) {
 	log.InfoContext(ctx, "not yet implemented", "command", "calibrate")
 }
