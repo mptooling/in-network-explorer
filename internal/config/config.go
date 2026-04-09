@@ -43,6 +43,7 @@ type Config struct {
 	MaxConnectionReqsPerDay int    // MAX_CONNECTION_REQS_PER_DAY, default: 10
 	MaxProspectsPerRun      int    // MAX_PROSPECTS_PER_RUN, default: 20
 	AnalyzeConcurrency      int    // ANALYZE_CONCURRENCY, default: 3
+	MaxNavsBeforeRestart    int    // BROWSER_MAX_NAVS, default: 50
 	PromptConfigPath        string // PROMPT_CONFIG_PATH, default: prompts/scoring.json
 }
 
@@ -76,6 +77,7 @@ func MustLoad() Config {
 		MaxConnectionReqsPerDay: envOrDefaultInt("MAX_CONNECTION_REQS_PER_DAY", 10),
 		MaxProspectsPerRun:      envOrDefaultInt("MAX_PROSPECTS_PER_RUN", 20),
 		AnalyzeConcurrency:      envOrDefaultInt("ANALYZE_CONCURRENCY", 3),
+		MaxNavsBeforeRestart:    envOrDefaultInt("BROWSER_MAX_NAVS", 50),
 		PromptConfigPath:        envOrDefault("PROMPT_CONFIG_PATH", "prompts/scoring.json"),
 	}
 

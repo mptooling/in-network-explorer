@@ -47,6 +47,7 @@ func TestMustLoad_AllPresent(t *testing.T) {
 	t.Setenv("MAX_CONNECTION_REQS_PER_DAY", "15")
 	t.Setenv("MAX_PROSPECTS_PER_RUN", "30")
 	t.Setenv("ANALYZE_CONCURRENCY", "5")
+	t.Setenv("BROWSER_MAX_NAVS", "75")
 	t.Setenv("PROMPT_CONFIG_PATH", "prompts/custom.json")
 
 	cfg := MustLoad()
@@ -74,6 +75,7 @@ func TestMustLoad_AllPresent(t *testing.T) {
 	assertEqualInt(t, "MaxConnectionReqsPerDay", cfg.MaxConnectionReqsPerDay, 15)
 	assertEqualInt(t, "MaxProspectsPerRun", cfg.MaxProspectsPerRun, 30)
 	assertEqualInt(t, "AnalyzeConcurrency", cfg.AnalyzeConcurrency, 5)
+	assertEqualInt(t, "MaxNavsBeforeRestart", cfg.MaxNavsBeforeRestart, 75)
 	assertEqual(t, "PromptConfigPath", cfg.PromptConfigPath, "prompts/custom.json")
 }
 
@@ -133,6 +135,7 @@ func TestMustLoad_DefaultValues(t *testing.T) {
 	assertEqualInt(t, "MaxConnectionReqsPerDay", cfg.MaxConnectionReqsPerDay, 10)
 	assertEqualInt(t, "MaxProspectsPerRun", cfg.MaxProspectsPerRun, 20)
 	assertEqualInt(t, "AnalyzeConcurrency", cfg.AnalyzeConcurrency, 3)
+	assertEqualInt(t, "MaxNavsBeforeRestart", cfg.MaxNavsBeforeRestart, 50)
 	assertEqual(t, "PromptConfigPath", cfg.PromptConfigPath, "prompts/scoring.json")
 }
 
