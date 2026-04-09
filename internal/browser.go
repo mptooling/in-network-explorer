@@ -1,4 +1,4 @@
-package domain
+package explorer
 
 import "context"
 
@@ -28,7 +28,7 @@ type ProfileData struct {
 }
 
 // BrowserClient abstracts the headless browser (go-rod) interactions with
-// LinkedIn. Implementations live in adapter/linkedin.
+// LinkedIn. Implementations live in internal/linkedin.
 type BrowserClient interface {
 	// VisitProfile navigates to profileURL and extracts structured profile data.
 	VisitProfile(ctx context.Context, profileURL string) (ProfileData, error)

@@ -58,50 +58,48 @@ Types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`, `ci`, `perf`
 in-network-explorer/
 ├── .github/
 │   └── workflows/
-│       ├── ci.yml           # unit tests, vet, build, lint — runs on every push + PR
-│       └── integration.yml  # integration tests — manual trigger only
+│       ├── ci.yml               # unit tests, vet, build, lint — runs on every push + PR
+│       └── integration.yml      # integration tests — manual trigger only
 ├── cmd/
-│   ├── main.go              # CLI root: os.Args dispatch, DI wiring, signal handling
-│   ├── scrape.go            # scrape subcommand
-│   ├── analyze.go           # analyze subcommand
-│   ├── report.go            # report subcommand
-│   └── calibrate.go         # calibrate subcommand
-├── domain/
-│   ├── prospect.go          # Prospect struct, State enum, Transition(), computeNextAction()
-│   ├── errors.go            # Sentinel errors
-│   ├── repository.go        # ProspectRepository, RateLimiter interfaces
-│   ├── llm.go               # LLMClient interface + ScoreResult type
-│   ├── embedding.go         # EmbeddingClient, EmbeddingStore interfaces
-│   └── browser.go           # BrowserClient interface
-├── usecase/
-│   ├── scrape.go
-│   ├── warmup.go
-│   ├── analyze.go
-│   ├── report.go
-│   └── calibrate.go
-├── adapter/
+│   └── in-network-explorer/
+│       ├── main.go              # CLI root: os.Args dispatch, DI wiring, signal handling
+│       ├── scrape.go            # scrape subcommand
+│       ├── analyze.go           # analyze subcommand
+│       ├── report.go            # report subcommand
+│       └── calibrate.go         # calibrate subcommand
+├── internal/                    # package explorer — flat Ben Johnson layout
+│   ├── prospect.go              # Prospect struct, State enum, Transition()
+│   ├── errors.go                # Sentinel errors
+│   ├── repository.go            # ProspectRepository, RateLimiter interfaces
+│   ├── llm.go                   # LLMClient interface + ScoreResult type
+│   ├── embedding.go             # EmbeddingClient, EmbeddingStore interfaces
+│   ├── browser.go               # BrowserClient interface + ProfileData, BlockType
+│   ├── scrape.go                # ScrapePhase use case
+│   ├── warmup.go                # WarmupPhase use case
+│   ├── analyze.go               # AnalyzePhase use case
+│   ├── report.go                # ReportPhase use case
+│   ├── calibrate.go             # CalibratePhase use case
+│   ├── config/
+│   │   ├── config.go            # Config struct, MustLoad()
+│   │   ├── aws.go               # AWS client constructors
+│   │   └── browser.go           # go-rod browser factory
 │   ├── dynamo/
-│   │   ├── prospect_repo.go
-│   │   └── rate_limiter.go
+│   │   ├── prospect_repo.go     # ProspectRepository implementation
+│   │   └── rate_limiter.go      # RateLimiter implementation
 │   ├── qdrant/
-│   │   └── embedding_store.go
+│   │   └── embedding_store.go   # EmbeddingStore implementation
 │   ├── bedrock/
-│   │   ├── llm_client.go
-│   │   └── embedding_client.go
-│   └── linkedin/
-│       ├── browser_client.go
-│       └── voyager_client.go
-├── infrastructure/
-│   ├── config.go
-│   ├── aws.go
-│   └── browser.go
-├── internal/
+│   │   ├── llm_client.go        # LLMClient implementation
+│   │   └── embedding_client.go  # EmbeddingClient implementation
+│   ├── linkedin/
+│   │   ├── browser_client.go    # BrowserClient implementation
+│   │   └── voyager_client.go    # Voyager API client
 │   ├── jitter/
-│   │   └── jitter.go
+│   │   └── jitter.go            # timing distributions, mouse/scroll/typing simulation
 │   ├── report/
-│   │   └── render.go
+│   │   └── render.go            # JSON/HTML report renderer
 │   └── testdouble/
-│       └── fakes.go         # shared in-memory fakes for tests
+│       └── fakes.go             # shared in-memory fakes for tests
 └── docs/
     └── architecture.md
 ```
@@ -350,7 +348,7 @@ Settings:
 **Goal:** The `Prospect` aggregate with full state machine, sentinel errors, and all domain interfaces. This is the most important story — every other layer depends on it.
 
 #### Sub-task 1.2.1 — Sentinel errors
-**Test file:** `domain/errors_test.go`
+**Test file:** `internal/errors_test.go`
 
 ```go
 // Tests:
@@ -360,7 +358,7 @@ Settings:
 // - errors.As works for typed wrapping
 ```
 
-**Implementation:** `domain/errors.go`
+**Implementation:** `internal/errors.go`
 
 ```go
 var (
@@ -377,7 +375,7 @@ var (
 ---
 
 #### Sub-task 1.2.2 — Prospect state machine
-**Test file:** `domain/prospect_test.go`
+**Test file:** `internal/prospect_test.go`
 
 ```go
 // Table-driven tests covering:
@@ -401,7 +399,7 @@ var (
 //   - Each state produces the correct uppercase string
 ```
 
-**Implementation:** `domain/prospect.go`
+**Implementation:** `internal/prospect.go`
 
 Full `Prospect` struct with all fields from the research (see Stage 1.2.3 for field list). `State` enum as `uint8`. `Transition()` method. `computeNextAction()` with 20-25h jitter using `math/rand`.
 
@@ -410,7 +408,7 @@ Full `Prospect` struct with all fields from the research (see Stage 1.2.3 for fi
 ---
 
 #### Sub-task 1.2.3 — Domain interfaces
-**Test file:** `domain/repository_test.go`, `domain/llm_test.go`, `domain/browser_test.go`
+**Test file:** `internal/repository_test.go`, `internal/llm_test.go`, `internal/browser_test.go`
 
 ```go
 // Tests (compile-time interface satisfaction only — no logic):
@@ -421,12 +419,12 @@ Full `Prospect` struct with all fields from the research (see Stage 1.2.3 for fi
 // - verify that a hand-written fake struct satisfies EmbeddingClient
 // - verify that a hand-written fake struct satisfies EmbeddingStore
 //
-// Pattern: var _ domain.ProspectRepository = (*fakeRepo)(nil)
+// Pattern: var _ ProspectRepository = (*fakeRepo)(nil)
 ```
 
 **Implementation:** Four interface files:
 
-`domain/repository.go`:
+`internal/repository.go`:
 ```go
 type ProspectRepository interface {
     Save(ctx context.Context, p *Prospect) error
@@ -442,7 +440,7 @@ type RateLimiter interface {
 }
 ```
 
-`domain/llm.go`:
+`internal/llm.go`:
 ```go
 type ScoreResult struct {
     Score      int    // 1-10
@@ -457,7 +455,7 @@ type LLMClient interface {
 }
 ```
 
-`domain/embedding.go`:
+`internal/embedding.go`:
 ```go
 type EmbeddingClient interface {
     Embed(ctx context.Context, text string) ([]float32, error)
@@ -469,7 +467,7 @@ type EmbeddingStore interface {
 }
 ```
 
-`domain/browser.go`:
+`internal/browser.go`:
 ```go
 type BlockType int
 const (
@@ -530,7 +528,7 @@ In-memory implementations of all domain interfaces. Used by usecase tests in eve
 **Goal:** All configuration loaded from environment variables at startup via a single `Config` struct. The binary fails fast with a descriptive error if required vars are missing.
 
 #### Sub-task 1.3.1 — Config struct and loader
-**Test file:** `infrastructure/config_test.go`
+**Test file:** `internal/config/config_test.go`
 
 ```go
 // Tests:
@@ -540,7 +538,7 @@ In-memory implementations of all domain interfaces. Used by usecase tests in eve
 // TestConfig_ChromeBinDefault: empty CHROME_BIN is valid (auto-detect)
 ```
 
-**Implementation:** `infrastructure/config.go`
+**Implementation:** `internal/config/config.go`
 
 ```go
 type Config struct {
@@ -586,7 +584,7 @@ Use `os.Getenv` + explicit panic with variable name for required fields. No refl
 **Goal:** A working binary with four subcommands. Each subcommand currently just prints "not yet implemented". Signal handling shuts down cleanly.
 
 #### Sub-task 1.4.1 — CLI router with os.Args dispatch
-**Test file:** `cmd/main_test.go`
+**Test file:** `cmd/in-network-explorer/main_test.go`
 
 ```go
 // Tests (via exec.Command or os.Args injection):
@@ -595,7 +593,7 @@ Use `os.Getenv` + explicit panic with variable name for required fields. No refl
 // TestCLI_KnownCommands: scrape/analyze/report/calibrate exit 0 with stub runners
 ```
 
-**Implementation:** `cmd/main.go`
+**Implementation:** `cmd/in-network-explorer/main.go`
 
 ```go
 func main() {
@@ -629,7 +627,7 @@ Each `run*` function in its own file, returning immediately with `slog.Info("not
 ---
 
 #### Sub-task 1.4.2 — Structured logging setup
-**Test file:** `cmd/logging_test.go`
+**Test file:** `cmd/in-network-explorer/logging_test.go`
 
 ```go
 // Tests:
@@ -638,14 +636,14 @@ Each `run*` function in its own file, returning immediately with `slog.Info("not
 // TestLogging_CorrelationLogger: With("prospect_url", url) propagates to sub-calls
 ```
 
-**Implementation:** Add `newLogger(runID string) *slog.Logger` to `cmd/main.go`. Every subcommand receives a pre-configured logger with `run_id` field injected. Logger is threaded via context using `slog.NewLogLogger` pattern — no global state.
+**Implementation:** Add `newLogger(runID string) *slog.Logger` to `cmd/in-network-explorer/main.go`. Every subcommand receives a pre-configured logger with `run_id` field injected. Logger is threaded via context using `slog.NewLogLogger` pattern — no global state.
 
 **Commit:** `feat(cmd): add structured JSON logging with run_id correlation field`
 
 ---
 
 #### Sub-task 1.4.3 — AWS client constructors
-**Test file:** `infrastructure/aws_test.go`
+**Test file:** `internal/config/aws_test.go`
 
 ```go
 // Tests (build-tag: integration):
@@ -655,7 +653,7 @@ Each `run*` function in its own file, returning immediately with `slog.Info("not
 // TestNewDynamoClient_UsesRegion: client configured with region from config
 ```
 
-**Implementation:** `infrastructure/aws.go`
+**Implementation:** `internal/config/aws.go`
 
 ```go
 func NewDynamoClient(ctx context.Context, cfg Config) (*dynamodb.Client, error)
@@ -816,7 +814,7 @@ type Keyboard interface {
 **Goal:** A production-ready go-rod browser configured with all anti-detection measures from the research.
 
 #### Sub-task 2.3.1 — Browser factory (launcher configuration)
-**Test file:** `infrastructure/browser_test.go`
+**Test file:** `internal/config/browser_test.go`
 
 ```go
 // Tests:
@@ -829,7 +827,7 @@ type Keyboard interface {
 // TestBrowserConfig_DisableWebRTC: --disable-webrtc flag is set (prevent LAN IP leak)
 ```
 
-**Implementation:** `infrastructure/browser.go`
+**Implementation:** `internal/config/browser.go`
 
 Complete browser factory implementing all flags from the research:
 - `--disable-blink-features=AutomationControlled`
@@ -848,7 +846,7 @@ Complete browser factory implementing all flags from the research:
 ---
 
 #### Sub-task 2.3.2 — go-rod/stealth integration and custom patches
-**Test file:** `infrastructure/browser_stealth_test.go`
+**Test file:** `internal/config/browser_stealth_test.go`
 
 ```go
 // Tests (build tag: integration):
@@ -859,7 +857,7 @@ Complete browser factory implementing all flags from the research:
 // TestCustomPatches_ColorDepth: screen.colorDepth returns 24
 ```
 
-**Implementation:** Add to `infrastructure/browser.go`:
+**Implementation:** Add to `internal/config/browser.go`:
 
 1. Apply `stealth.MustPage(browser)` for every new page (return a `newPage()` helper)
 2. Apply custom `EvalOnNewDocument` patches (screen properties, AudioContext noise)
@@ -870,7 +868,7 @@ Complete browser factory implementing all flags from the research:
 ---
 
 #### Sub-task 2.3.3 — BrowserGate extension hijack
-**Test file:** `infrastructure/browser_hijack_test.go`
+**Test file:** `internal/config/browser_hijack_test.go`
 
 ```go
 // Tests (build tag: integration):
@@ -880,7 +878,7 @@ Complete browser factory implementing all flags from the research:
 // TestExtensionHijack_SimulatesExactly5: exactly 5 extensions are configured
 ```
 
-**Implementation:** `SetupExtensionHijack(browser *rod.Browser) *rod.HijackRouter` in `infrastructure/browser.go`
+**Implementation:** `SetupExtensionHijack(browser *rod.Browser) *rod.HijackRouter` in `internal/config/browser.go`
 
 Extension IDs: uBlock Origin, Google Docs Offline, Grammarly, 1Password, LastPass.
 
@@ -893,7 +891,7 @@ Extension IDs: uBlock Origin, Google Docs Offline, Grammarly, 1Password, LastPas
 **Goal:** Cookie injection, session health checking, and block detection. The browser client is usable before LinkedIn-specific scraping logic is added.
 
 #### Sub-task 2.4.1 — Session health checker
-**Test file:** `infrastructure/session_test.go`
+**Test file:** `internal/config/session_test.go`
 
 ```go
 // Tests (using fake page URL responses):
@@ -904,10 +902,10 @@ Extension IDs: uBlock Origin, Google Docs Offline, Grammarly, 1Password, LastPas
 // TestDetectBlock_Loginwall: loginwall URL returns BlockLoginwall (maps to BlockChallenge)
 ```
 
-**Implementation:** `infrastructure/session.go`
+**Implementation:** `internal/config/session.go`
 
 ```go
-func DetectBlock(page *rod.Page) domain.BlockType
+func DetectBlock(page *rod.Page) BlockType
 func InjectCookies(browser *rod.Browser, cookiesJSON string) error // parses li_at + JSESSIONID
 func ExtractSessionCookies(browser *rod.Browser) (liAt, jsessionID string, err error)
 ```
@@ -930,7 +928,7 @@ func ExtractSessionCookies(browser *rod.Browser) (liAt, jsessionID string, err e
 **Goal:** Authenticated HTTP client for LinkedIn's internal Voyager API. Returns structured Go types.
 
 #### Sub-task 3.1.1 — Voyager HTTP client with required headers
-**Test file:** `adapter/linkedin/voyager_client_test.go`
+**Test file:** `internal/linkedin/voyager_client_test.go`
 
 ```go
 // Tests (using httptest.NewServer):
@@ -941,7 +939,7 @@ func ExtractSessionCookies(browser *rod.Browser) (liAt, jsessionID string, err e
 // TestVoyagerClient_SendsCookies: li_at and JSESSIONID cookies attached to request
 ```
 
-**Implementation:** `adapter/linkedin/voyager_client.go`
+**Implementation:** `internal/linkedin/voyager_client.go`
 
 ```go
 type VoyagerClient struct {
@@ -959,7 +957,7 @@ func (c *VoyagerClient) do(ctx context.Context, path string) (*http.Response, er
 ---
 
 #### Sub-task 3.1.2 — Profile data extraction from Voyager response
-**Test file:** `adapter/linkedin/profile_parser_test.go`
+**Test file:** `internal/linkedin/profile_parser_test.go`
 
 ```go
 // Tests (using fixture JSON files in testdata/):
@@ -971,18 +969,18 @@ func (c *VoyagerClient) do(ctx context.Context, path string) (*http.Response, er
 // TestParseProfileResponse_InvalidJSON: returns descriptive error
 ```
 
-**Implementation:** Add `parseProfileResponse(body []byte) (domain.ProfileData, error)` to `adapter/linkedin/voyager_client.go`
+**Implementation:** Add `parseProfileResponse(body []byte) (ProfileData, error)` to `internal/linkedin/voyager_client.go`
 
 Parse the Voyager `included` array: find the node where `entityUrn` contains `"fsd_profile:"` and `firstName` is present. Extract all required fields.
 
-Add fixture file: `adapter/linkedin/testdata/profile_response.json` — sanitized sample Voyager response.
+Add fixture file: `internal/linkedin/testdata/profile_response.json` — sanitized sample Voyager response.
 
 **Commit:** `feat(linkedin): add Voyager profile response parser`
 
 ---
 
 #### Sub-task 3.1.3 — Voyager FetchProfile method
-**Test file:** `adapter/linkedin/fetch_profile_test.go`
+**Test file:** `internal/linkedin/fetch_profile_test.go`
 
 ```go
 // Tests (httptest server returning fixture):
@@ -992,7 +990,7 @@ Add fixture file: `adapter/linkedin/testdata/profile_response.json` — sanitize
 // TestFetchProfile_ContextCancellation: returns context error when cancelled
 ```
 
-**Implementation:** `func (c *VoyagerClient) FetchProfile(ctx context.Context, slug string) (domain.ProfileData, error)`
+**Implementation:** `func (c *VoyagerClient) FetchProfile(ctx context.Context, slug string) (ProfileData, error)`
 
 Profile endpoint: `GET /voyager/api/identity/dash/profiles?q=memberIdentity&memberIdentity={slug}&decorationId=com.linkedin.voyager.dash.deco.identity.profile.FullProfileWithEntities-93`
 
@@ -1005,7 +1003,7 @@ Profile endpoint: `GET /voyager/api/identity/dash/profiles?q=memberIdentity&memb
 **Goal:** Parse LinkedIn profile HTML for JSON-LD structured data when Voyager is unavailable or returns incomplete data.
 
 #### Sub-task 3.2.1 — JSON-LD extractor
-**Test file:** `adapter/linkedin/jsonld_test.go`
+**Test file:** `internal/linkedin/jsonld_test.go`
 
 ```go
 // Tests:
@@ -1017,24 +1015,24 @@ Profile endpoint: `GET /voyager/api/identity/dash/profiles?q=memberIdentity&memb
 // TestExtractJSONLD_MultipleGraphNodes: correctly finds Person among other @type values
 ```
 
-**Implementation:** `adapter/linkedin/jsonld.go`
+**Implementation:** `internal/linkedin/jsonld.go`
 
 ```go
 // ExtractJSONLD parses all <script type="application/ld+json"> tags from HTML
 // and extracts a ProfileData from the @type:Person node if present.
-func ExtractJSONLD(html string) (domain.ProfileData, error)
+func ExtractJSONLD(html string) (ProfileData, error)
 ```
 
 Uses `goquery` to find script tags, then `encoding/json` to parse the `@graph` array.
 
-Add fixture: `adapter/linkedin/testdata/profile.html` — sanitized sample LinkedIn profile page.
+Add fixture: `internal/linkedin/testdata/profile.html` — sanitized sample LinkedIn profile page.
 
 **Commit:** `feat(linkedin): add JSON-LD profile extractor as Voyager fallback`
 
 ---
 
 #### Sub-task 3.2.2 — Post extractor
-**Test file:** `adapter/linkedin/posts_test.go`
+**Test file:** `internal/linkedin/posts_test.go`
 
 ```go
 // Tests (using httptest + fixture HTML):
@@ -1044,7 +1042,7 @@ Add fixture: `adapter/linkedin/testdata/profile.html` — sanitized sample Linke
 // TestExtractPosts_MaxLength: each post text truncated to 1000 chars
 ```
 
-**Implementation:** `adapter/linkedin/posts.go`
+**Implementation:** `internal/linkedin/posts.go`
 
 ```go
 // ExtractPosts parses the /recent-activity/shares/ page HTML and returns
@@ -1060,10 +1058,10 @@ Uses `goquery` to find article elements and extract text content.
 
 ### Story 3.3 — Browser Client Implementation
 
-**Goal:** Implement `domain.BrowserClient` using go-rod to navigate LinkedIn and call the extraction primitives.
+**Goal:** Implement `BrowserClient` using go-rod to navigate LinkedIn and call the extraction primitives.
 
 #### Sub-task 3.3.1 — BrowserClient struct and VisitProfile
-**Test file:** `adapter/linkedin/browser_client_test.go`
+**Test file:** `internal/linkedin/browser_client_test.go`
 
 ```go
 // Tests (build tag: integration):
@@ -1073,7 +1071,7 @@ Uses `goquery` to find article elements and extract text content.
 // TestBrowserClient_implements_BrowserClient: compile-time interface check
 ```
 
-**Implementation:** `adapter/linkedin/browser_client.go`
+**Implementation:** `internal/linkedin/browser_client.go`
 
 ```go
 type BrowserClient struct {
@@ -1091,7 +1089,7 @@ type BrowserClient struct {
 // 4. Extract data: try Voyager API first, fall back to JSON-LD
 // 5. Enforce dwell time: LogNormalDuration(wordCount)
 // 6. Return ProfileData
-func (c *BrowserClient) VisitProfile(ctx context.Context, profileURL string) (domain.ProfileData, error)
+func (c *BrowserClient) VisitProfile(ctx context.Context, profileURL string) (ProfileData, error)
 ```
 
 **Commit:** `feat(linkedin): implement BrowserClient.VisitProfile with Voyager + JSON-LD extraction`
@@ -1099,7 +1097,7 @@ func (c *BrowserClient) VisitProfile(ctx context.Context, profileURL string) (do
 ---
 
 #### Sub-task 3.3.2 — LikeRecentPost and SearchProfiles
-**Test file:** `adapter/linkedin/browser_client_actions_test.go`
+**Test file:** `internal/linkedin/browser_client_actions_test.go`
 
 ```go
 // Tests (build tag: integration):
@@ -1109,7 +1107,7 @@ func (c *BrowserClient) VisitProfile(ctx context.Context, profileURL string) (do
 // TestBrowserClient_SearchProfiles_RespectsLimit: never returns more than limit URLs
 ```
 
-**Implementation:** Add to `adapter/linkedin/browser_client.go`
+**Implementation:** Add to `internal/linkedin/browser_client.go`
 
 `LikeRecentPost`: navigate to `/recent-activity/shares/`, find first post like button, WindMouse to it, click. Includes human dwell and scroll before clicking.
 
@@ -1163,10 +1161,10 @@ func RetryWithBackoff(ctx context.Context, maxAttempts int, fn func() error) err
 
 ### Story 4.1 — DynamoDB Adapter
 
-**Goal:** Implement `domain.ProspectRepository` and `domain.RateLimiter` against DynamoDB.
+**Goal:** Implement `ProspectRepository` and `RateLimiter` against DynamoDB.
 
 #### Sub-task 4.1.1 — DynamoDB ProspectRepository: Save and Get
-**Test file:** `adapter/dynamo/prospect_repo_test.go`
+**Test file:** `internal/dynamo/prospect_repo_test.go`
 
 ```go
 // Unit tests (with fake DynamoDB using testify/mock or hand-rolled):
@@ -1180,7 +1178,7 @@ func RetryWithBackoff(ctx context.Context, maxAttempts int, fn func() error) err
 // TestProspectRepo_SaveThenGet: save then get round-trip produces identical struct
 ```
 
-**Implementation:** `adapter/dynamo/prospect_repo.go`
+**Implementation:** `internal/dynamo/prospect_repo.go`
 
 Use `aws-sdk-go-v2/feature/dynamodb/expression` for all expressions (never raw strings).
 Use `aws-sdk-go-v2/feature/dynamodb/attributevalue` for marshal/unmarshal.
@@ -1191,7 +1189,7 @@ Context with 5s timeout on every DynamoDB call.
 ---
 
 #### Sub-task 4.1.2 — ProspectRepository: InsertIfNew and ListByState
-**Test file:** add to `adapter/dynamo/prospect_repo_test.go`
+**Test file:** add to `internal/dynamo/prospect_repo_test.go`
 
 ```go
 // TestInsertIfNew_NewProspect: returns inserted=true
@@ -1202,7 +1200,7 @@ Context with 5s timeout on every DynamoDB call.
 // TestListByStateOrderedByScore_Descending: highest score first
 ```
 
-**Implementation:** Add methods to `adapter/dynamo/prospect_repo.go`
+**Implementation:** Add methods to `internal/dynamo/prospect_repo.go`
 
 `InsertIfNew`: `PutItem` with `ConditionExpression: attribute_not_exists(PK)`.
 
@@ -1215,7 +1213,7 @@ Context with 5s timeout on every DynamoDB call.
 ---
 
 #### Sub-task 4.1.3 — DynamoDB RateLimiter
-**Test file:** `adapter/dynamo/rate_limiter_test.go`
+**Test file:** `internal/dynamo/rate_limiter_test.go`
 
 ```go
 // Unit tests:
@@ -1228,7 +1226,7 @@ Context with 5s timeout on every DynamoDB call.
 // TestRateLimiter_AtomicIncrement: concurrent Acquire from N goroutines, exactly max succeed
 ```
 
-**Implementation:** `adapter/dynamo/rate_limiter.go`
+**Implementation:** `internal/dynamo/rate_limiter.go`
 
 `UpdateItem` with `if_not_exists(Count, 0) + 1` and `ConditionExpression: attribute_not_exists(Count) OR Count < :max`.
 
@@ -1243,7 +1241,7 @@ Scopes: `"profile_views"` (max from config), `"connection_requests"` (max from c
 **Goal:** Orchestrate the discovery of new prospects.
 
 #### Sub-task 4.2.1 — ScrapePhase core logic
-**Test file:** `usecase/scrape_test.go`
+**Test file:** `internal/scrape_test.go`
 
 ```go
 // All tests use fake repository and fake BrowserClient:
@@ -1256,13 +1254,13 @@ Scopes: `"profile_views"` (max from config), `"connection_requests"` (max from c
 // TestScrapePhase_ContextCancellation: exits cleanly when ctx cancelled
 ```
 
-**Implementation:** `usecase/scrape.go`
+**Implementation:** `internal/scrape.go`
 
 ```go
 type ScrapePhase struct {
-    browser   domain.BrowserClient
-    repo      domain.ProspectRepository
-    limiter   domain.RateLimiter
+    browser   BrowserClient
+    repo      ProspectRepository
+    limiter   RateLimiter
     maxPerRun int
     searchQ   string
     location  string
@@ -1277,14 +1275,14 @@ func (s *ScrapePhase) Run(ctx context.Context) error
 ---
 
 #### Sub-task 4.2.2 — Wire scrape command
-**Test file:** `cmd/scrape_test.go`
+**Test file:** `cmd/in-network-explorer/scrape_test.go`
 
 ```go
 // TestRunScrape_WiresCorrectly: (build tag: integration) command runs without panic
 // TestRunScrape_RespectsContext: exits when context cancelled
 ```
 
-**Implementation:** `cmd/scrape.go`
+**Implementation:** `cmd/in-network-explorer/scrape.go`
 
 Fully wired `runScrape(ctx, cfg)` — creates all dependencies (DynamoDB client, browser, rate limiter), constructs `ScrapePhase`, calls `.Run(ctx)`, logs outcome.
 
@@ -1297,7 +1295,7 @@ Fully wired `runScrape(ctx, cfg)` — creates all dependencies (DynamoDB client,
 **Goal:** Advance `Scanned` prospects to `Liked` on Day 2.
 
 #### Sub-task 4.3.1 — WarmupPhase core logic
-**Test file:** `usecase/warmup_test.go`
+**Test file:** `internal/warmup_test.go`
 
 ```go
 // TestWarmupPhase_AdvancesScannedToLiked: calls LikeRecentPost and transitions state
@@ -1308,13 +1306,13 @@ Fully wired `runScrape(ctx, cfg)` — creates all dependencies (DynamoDB client,
 // TestWarmupPhase_ContextCancellation: exits cleanly
 ```
 
-**Implementation:** `usecase/warmup.go`
+**Implementation:** `internal/warmup.go`
 
 ```go
 type WarmupPhase struct {
-    browser domain.BrowserClient
-    repo    domain.ProspectRepository
-    limiter domain.RateLimiter
+    browser BrowserClient
+    repo    ProspectRepository
+    limiter RateLimiter
     logger  *slog.Logger
 }
 
@@ -1328,7 +1326,7 @@ Queries GSI1 for `StateScanned` prospects due today. For each: `VisitProfile`, `
 ---
 
 #### Sub-task 4.3.2 — Wire warmup into scrape command (same cron)
-**Implementation:** `cmd/scrape.go` — `runScrape` runs `ScrapePhase` then `WarmupPhase` sequentially. The single cron job at `09:00` handles both new discovery and warm-up advancement.
+**Implementation:** `cmd/in-network-explorer/scrape.go` — `runScrape` runs `ScrapePhase` then `WarmupPhase` sequentially. The single cron job at `09:00` handles both new discovery and warm-up advancement.
 
 **Commit:** `feat(cmd): run WarmupPhase after ScrapePhase in scrape subcommand`
 
@@ -1346,7 +1344,7 @@ Queries GSI1 for `StateScanned` prospects due today. For each: `VisitProfile`, `
 ### Story 5.1 — Draft Advancement
 
 #### Sub-task 5.1.1 — Advance Liked → Drafted
-**Test file:** `usecase/warmup_draft_test.go`
+**Test file:** `internal/warmup_draft_test.go`
 
 ```go
 // TestDraftPhase_AdvancesLikedToDrafted: queries GSI1 for StateLiked due today, transitions each
@@ -1355,7 +1353,7 @@ Queries GSI1 for `StateScanned` prospects due today. For each: `VisitProfile`, `
 // TestDraftPhase_RespectsLimit: stops at MaxConnectionReqsPerDay
 ```
 
-**Implementation:** Extend `usecase/warmup.go` with a `DraftPhase` struct (or `AdvanceToDraft` method on `WarmupPhase`).
+**Implementation:** Extend `internal/warmup.go` with a `DraftPhase` struct (or `AdvanceToDraft` method on `WarmupPhase`).
 
 This phase does NOT send any connection request — it only updates state to `Drafted` so the human can review and send. The AI analysis (Stage 6) populates `DraftedMessage` before this phase runs.
 
@@ -1364,9 +1362,9 @@ This phase does NOT send any connection request — it only updates state to `Dr
 ---
 
 #### Sub-task 5.1.2 — Warmup cron subcommand
-**Implementation:** `cmd/scrape.go` already runs scrape + warmup. This sub-task separates it if needed, or adds `--phase` flag. No-op commit unless there is wiring to add.
+**Implementation:** `cmd/in-network-explorer/scrape.go` already runs scrape + warmup. This sub-task separates it if needed, or adds `--phase` flag. No-op commit unless there is wiring to add.
 
-Review whether `analyze` should run before `warmup`'s draft advancement (yes — analyze must run first to populate `DraftedMessage`). Document the correct cron order in `cmd/main.go` comments.
+Review whether `analyze` should run before `warmup`'s draft advancement (yes — analyze must run first to populate `DraftedMessage`). Document the correct cron order in `cmd/in-network-explorer/main.go` comments.
 
 **Commit:** `docs(cmd): document correct cron phase order (scrape → analyze → warmup-draft → report)`
 
@@ -1384,7 +1382,7 @@ Review whether `analyze` should run before `warmup`'s draft advancement (yes —
 ### Story 6.1 — Bedrock LLM Client
 
 #### Sub-task 6.1.1 — Prompt templates and versioning
-**Test file:** `adapter/bedrock/prompt_test.go`
+**Test file:** `internal/bedrock/prompt_test.go`
 
 ```go
 // Tests:
@@ -1394,7 +1392,7 @@ Review whether `analyze` should run before `warmup`'s draft advancement (yes —
 // TestBuildScoringPayload_AnthropicVersion: anthropic_version field present
 ```
 
-**Implementation:** `adapter/bedrock/prompts.go`
+**Implementation:** `internal/bedrock/prompts.go`
 
 Scoring system prompt, XML-structured user content builder, critique prompt. Prompts are also loadable from `prompts/scoring.json` (path from config) to support DSPy-compiled prompt updates without recompilation.
 
@@ -1414,7 +1412,7 @@ func DefaultPromptConfig() *PromptConfig
 ---
 
 #### Sub-task 6.1.2 — Input sanitization against prompt injection
-**Test file:** `adapter/bedrock/sanitize_test.go`
+**Test file:** `internal/bedrock/sanitize_test.go`
 
 ```go
 // Tests:
@@ -1425,7 +1423,7 @@ func DefaultPromptConfig() *PromptConfig
 // TestSanitizeProfileField_PreservesGermanChars: ä ö ü ß preserved
 ```
 
-**Implementation:** `adapter/bedrock/sanitize.go`
+**Implementation:** `internal/bedrock/sanitize.go`
 
 ```go
 // SanitizeProfileField strips Unicode control/direction characters and
@@ -1438,7 +1436,7 @@ func SanitizeProfileField(raw string) string
 ---
 
 #### Sub-task 6.1.3 — Bedrock InvokeModel client
-**Test file:** `adapter/bedrock/llm_client_test.go`
+**Test file:** `internal/bedrock/llm_client_test.go`
 
 ```go
 // Tests (using httptest server or Bedrock stub):
@@ -1450,7 +1448,7 @@ func SanitizeProfileField(raw string) string
 // TestLLMClient_implements_LLMClient: compile-time interface check
 ```
 
-**Implementation:** `adapter/bedrock/llm_client.go`
+**Implementation:** `internal/bedrock/llm_client.go`
 
 ```go
 type LLMClient struct {
@@ -1459,7 +1457,7 @@ type LLMClient struct {
     prompts  *PromptConfig
 }
 
-func (c *LLMClient) ScoreAndDraft(ctx context.Context, p *domain.Prospect, examples []domain.Prospect) (domain.ScoreResult, error)
+func (c *LLMClient) ScoreAndDraft(ctx context.Context, p *Prospect, examples []Prospect) (ScoreResult, error)
 func (c *LLMClient) Critique(ctx context.Context, message string) (int, error)
 ```
 
@@ -1472,7 +1470,7 @@ Always validate response with `json.Unmarshal` into strict struct. Discard raw L
 ### Story 6.2 — Self-Critique Loop
 
 #### Sub-task 6.2.1 — Scoring with critique gating
-**Test file:** `usecase/analyze_test.go`
+**Test file:** `internal/analyze_test.go`
 
 ```go
 // All tests use fake LLMClient and fake ProspectRepository:
@@ -1485,13 +1483,13 @@ Always validate response with `json.Unmarshal` into strict struct. Discard raw L
 // TestAnalyzePhase_ContextCancellation: exits cleanly
 ```
 
-**Implementation:** `usecase/analyze.go`
+**Implementation:** `internal/analyze.go`
 
 ```go
 type AnalyzePhase struct {
-    llm     domain.LLMClient
-    repo    domain.ProspectRepository
-    embeds  domain.EmbeddingStore  // may be nil if RAG not yet set up
+    llm     LLMClient
+    repo    ProspectRepository
+    embeds  EmbeddingStore  // may be nil if RAG not yet set up
     concurrency int
     logger  *slog.Logger
 }
@@ -1506,13 +1504,13 @@ func (a *AnalyzePhase) Run(ctx context.Context) error
 ---
 
 #### Sub-task 6.2.2 — Wire analyze command
-**Test file:** `cmd/analyze_test.go`
+**Test file:** `cmd/in-network-explorer/analyze_test.go`
 
 ```go
 // TestRunAnalyze_WiresCorrectly: (build tag: integration) command runs without panic
 ```
 
-**Implementation:** `cmd/analyze.go`
+**Implementation:** `cmd/in-network-explorer/analyze.go`
 
 Fully wired `runAnalyze(ctx, cfg)`. Loads prompt config from file (with fallback to default). Wires `LLMClient`, `ProspectRepository`, constructs `AnalyzePhase`, runs it.
 
@@ -1532,7 +1530,7 @@ Fully wired `runAnalyze(ctx, cfg)`. Loads prompt config from file (with fallback
 ### Story 7.1 — Bedrock Embedding Client
 
 #### Sub-task 7.1.1 — Bedrock Titan Embeddings adapter
-**Test file:** `adapter/bedrock/embedding_client_test.go`
+**Test file:** `internal/bedrock/embedding_client_test.go`
 
 ```go
 // TestEmbeddingClient_ReturnsVector: valid text returns float32 slice of length > 0
@@ -1541,7 +1539,7 @@ Fully wired `runAnalyze(ctx, cfg)`. Loads prompt config from file (with fallback
 // TestEmbeddingClient_implements_EmbeddingClient: compile-time interface check
 ```
 
-**Implementation:** `adapter/bedrock/embedding_client.go`
+**Implementation:** `internal/bedrock/embedding_client.go`
 
 Model: `amazon.titan-embed-text-v2:0`. Input: text string. Output: `[]float32`.
 
@@ -1552,7 +1550,7 @@ Model: `amazon.titan-embed-text-v2:0`. Input: text string. Output: `[]float32`.
 ### Story 7.2 — Qdrant Store
 
 #### Sub-task 7.2.1 — Qdrant EmbeddingStore adapter
-**Test file:** `adapter/qdrant/embedding_store_test.go`
+**Test file:** `internal/qdrant/embedding_store_test.go`
 
 ```go
 // TestEmbeddingStore_UpsertAndSearch: upsert a vector, search returns it in top-1 (build tag: integration)
@@ -1561,7 +1559,7 @@ Model: `amazon.titan-embed-text-v2:0`. Input: text string. Output: `[]float32`.
 // TestEmbeddingStore_implements_EmbeddingStore: compile-time interface check
 ```
 
-**Implementation:** `adapter/qdrant/embedding_store.go`
+**Implementation:** `internal/qdrant/embedding_store.go`
 
 Uses `github.com/qdrant/go-client` (gRPC). Creates collection if not exists with cosine distance. Payload fields: `profile_url`, `outcome`, `critique_score`, `message_sent`.
 
@@ -1572,7 +1570,7 @@ Uses `github.com/qdrant/go-client` (gRPC). Creates collection if not exists with
 ### Story 7.3 — RAG Pipeline Integration
 
 #### Sub-task 7.3.1 — RAG retrieval in AnalyzePhase
-**Test file:** Add to `usecase/analyze_test.go`
+**Test file:** Add to `internal/analyze_test.go`
 
 ```go
 // TestAnalyzePhase_InjectsFewShot: when EmbeddingStore returns results,
@@ -1581,7 +1579,7 @@ Uses `github.com/qdrant/go-client` (gRPC). Creates collection if not exists with
 // TestAnalyzePhase_StoresEmbeddingAfterScoring: EmbeddingStore.Upsert called after successful score
 ```
 
-**Implementation:** Update `usecase/analyze.go`
+**Implementation:** Update `internal/analyze.go`
 
 After scoring: `EmbeddingClient.Embed(profileText)` → `EmbeddingStore.Upsert(...)`. Before scoring: `EmbeddingStore.SearchSimilar(vector, filter{outcome:ACCEPTED}, topK=3)` → inject as `examples` to `ScoreAndDraft`.
 
@@ -1590,7 +1588,7 @@ After scoring: `EmbeddingClient.Embed(profileText)` → `EmbeddingStore.Upsert(.
 ---
 
 #### Sub-task 7.3.2 — Outcome feedback recording
-**Test file:** `usecase/feedback_test.go`
+**Test file:** `internal/feedback_test.go`
 
 ```go
 // TestRecordOutcome_Accepted: updates Prospect with ConnectionAccepted=true, saves
@@ -1598,12 +1596,12 @@ After scoring: `EmbeddingClient.Embed(profileText)` → `EmbeddingStore.Upsert(.
 // TestRecordOutcome_UpdatesQdrantPayload: EmbeddingStore.Upsert called with updated outcome
 ```
 
-**Implementation:** `usecase/feedback.go`
+**Implementation:** `internal/feedback.go`
 
 ```go
 // RecordOutcome records a human decision (accepted/rejected/edited) back to
 // DynamoDB and updates the Qdrant payload for future RAG retrieval.
-func RecordOutcome(ctx context.Context, repo domain.ProspectRepository, store domain.EmbeddingStore,
+func RecordOutcome(ctx context.Context, repo ProspectRepository, store EmbeddingStore,
     profileURL string, accepted bool, messageSent string, edited bool) error
 ```
 
@@ -1625,7 +1623,7 @@ Called from `report` subcommand when human provides feedback via the report inte
 ### Story 8.1 — Bayesian Calibration
 
 #### Sub-task 8.1.1 — Beta distribution bucket tracking
-**Test file:** `usecase/calibrate_test.go`
+**Test file:** `internal/calibrate_test.go`
 
 ```go
 // TestBetaBucket_UpdateOnAccept: alpha increments
@@ -1635,7 +1633,7 @@ Called from `report` subcommand when human provides feedback via the report inte
 // TestScoreBucket: score 7 maps to bucket "7-8"
 ```
 
-**Implementation:** `usecase/calibrate.go` (partial)
+**Implementation:** `internal/calibrate.go` (partial)
 
 ```go
 type BetaBucket struct {
@@ -1656,7 +1654,7 @@ Stored per-bucket in DynamoDB as a calibration item (`PK: "CALIBRATION#bucket#7-
 ---
 
 #### Sub-task 8.1.2 — Platt scaling (logistic regression)
-**Test file:** `usecase/platt_test.go`
+**Test file:** `internal/platt_test.go`
 
 ```go
 // TestPlattScale_PerfectPositive: all accepted → calibrated score near 1.0 for high LLM score
@@ -1666,7 +1664,7 @@ Stored per-bucket in DynamoDB as a calibration item (`PK: "CALIBRATION#bucket#7-
 // TestFitPlatt_ProducesReasonableParameters: |a| and |b| are bounded
 ```
 
-**Implementation:** Add to `usecase/calibrate.go`
+**Implementation:** Add to `internal/calibrate.go`
 
 ```go
 type PlattParams struct {
@@ -1689,7 +1687,7 @@ Gradient descent implementation using only `math` stdlib. No external ML library
 ---
 
 #### Sub-task 8.1.3 — EWMA drift detection
-**Test file:** `usecase/drift_test.go`
+**Test file:** `internal/drift_test.go`
 
 ```go
 // TestEWMA_Update: EWMA converges toward new rate over time
@@ -1697,7 +1695,7 @@ Gradient descent implementation using only `math` stdlib. No external ML library
 // TestEWMA_NoDriftInStableSystem: returns false for stable acceptance rate
 ```
 
-**Implementation:** Add to `usecase/calibrate.go`
+**Implementation:** Add to `internal/calibrate.go`
 
 ```go
 func UpdateEWMA(previous, newRate, alpha float64) float64  // alpha=0.2
@@ -1711,7 +1709,7 @@ func IsDriftDetected(ewma, historicalMean, historicalStdDev float64) bool
 ### Story 8.2 — Calibrate Phase & Command
 
 #### Sub-task 8.2.1 — CalibratePhase orchestration
-**Test file:** Add to `usecase/calibrate_test.go`
+**Test file:** Add to `internal/calibrate_test.go`
 
 ```go
 // TestCalibratePhase_CollectsOutcomes: reads all ACCEPTED/REJECTED prospects from repo
@@ -1721,7 +1719,7 @@ func IsDriftDetected(ewma, historicalMean, historicalStdDev float64) bool
 // TestCalibratePhase_LogsDriftWarning: logs warning when drift detected
 ```
 
-**Implementation:** `usecase/calibrate.go` (complete)
+**Implementation:** `internal/calibrate.go` (complete)
 
 Reads all terminal-state prospects, updates Beta buckets, fits Platt if ≥30 outcomes, computes EWMA, stores all results in DynamoDB calibration items.
 
@@ -1730,7 +1728,7 @@ Reads all terminal-state prospects, updates Beta buckets, fits Platt if ≥30 ou
 ---
 
 #### Sub-task 8.2.2 — Wire calibrate command
-**Implementation:** `cmd/calibrate.go`
+**Implementation:** `cmd/in-network-explorer/calibrate.go`
 
 Fully wired `runCalibrate(ctx, cfg)`. Scheduled weekly via separate cron entry.
 
@@ -1750,7 +1748,7 @@ Fully wired `runCalibrate(ctx, cfg)`. Scheduled weekly via separate cron entry.
 ### Story 9.1 — Report Data Model & Logic
 
 #### Sub-task 9.1.1 — ReportPhase use case
-**Test file:** `usecase/report_test.go`
+**Test file:** `internal/report_test.go`
 
 ```go
 // TestReportPhase_QueriesDrafted: calls ListByStateOrderedByScore with StateDrafted
@@ -1760,7 +1758,7 @@ Fully wired `runCalibrate(ctx, cfg)`. Scheduled weekly via separate cron entry.
 // TestReportPhase_EmptyPipeline: returns empty report without error
 ```
 
-**Implementation:** `usecase/report.go`
+**Implementation:** `internal/report.go`
 
 ```go
 type ProspectReport struct {
@@ -1828,7 +1826,7 @@ Inline CSS only (no external stylesheet). Each prospect card shows: name (link t
 ---
 
 #### Sub-task 9.2.3 — Wire report command
-**Implementation:** `cmd/report.go`
+**Implementation:** `cmd/in-network-explorer/report.go`
 
 Writes `report-{timestamp}.json` and `report-{timestamp}.html` to the working directory. Logs file paths.
 
@@ -1848,7 +1846,7 @@ Writes `report-{timestamp}.json` and `report-{timestamp}.html` to the working di
 ### Story 10.1 — Chromium Reliability
 
 #### Sub-task 10.1.1 — Browser rotation and crash recovery
-**Test file:** `infrastructure/browser_rotation_test.go`
+**Test file:** `internal/config/browser_rotation_test.go`
 
 ```go
 // TestBrowserRotation_RotatesAtMaxNavs: a new browser is created after maxNavs navigations
@@ -1857,7 +1855,7 @@ Writes `report-{timestamp}.json` and `report-{timestamp}.html` to the working di
 // TestBrowserRotation_ClosesOldBrowser: old browser.Close() called before creating new one
 ```
 
-**Implementation:** Add browser rotation to `infrastructure/browser.go`
+**Implementation:** Add browser rotation to `internal/config/browser.go`
 
 Wrap `*rod.Browser` in a `RotatingBrowser` struct that counts navigations and transparently restarts Chromium at `maxNavs`. Re-applies all launch flags, proxy auth, stealth, and extension hijack after restart.
 
@@ -1868,7 +1866,7 @@ Wrap `*rod.Browser` in a `RotatingBrowser` struct that counts navigations and tr
 ### Story 10.2 — Observability
 
 #### Sub-task 10.2.1 — Health check command
-**Test file:** `cmd/health_test.go`
+**Test file:** `cmd/in-network-explorer/health_test.go`
 
 ```go
 // TestHealthCheck_DynamoReachable: exits 0 when DynamoDB responds
@@ -1877,7 +1875,7 @@ Wrap `*rod.Browser` in a `RotatingBrowser` struct that counts navigations and tr
 // TestHealthCheck_PrintsJSON: output is valid JSON health summary
 ```
 
-**Implementation:** `cmd/health.go` — `health` subcommand (add to `cmd/main.go` switch).
+**Implementation:** `cmd/in-network-explorer/health.go` — `health` subcommand (add to `cmd/in-network-explorer/main.go` switch).
 
 Pings each external service, prints JSON summary: `{"dynamo":"ok","bedrock":"ok","qdrant":"ok","chrome":"ok"}`. Used by EC2 monitoring to detect degraded state.
 
@@ -1888,7 +1886,7 @@ Pings each external service, prints JSON summary: `{"dynamo":"ok","bedrock":"ok"
 #### Sub-task 10.2.2 — Block alert in report
 **Implementation:** Add `BlockAlert bool` and `BlockDetectedAt *time.Time` to `ProspectReport`. When any cron run records a `BlockChallenge` in DynamoDB, the next report flags it prominently in HTML (red banner: "LinkedIn challenge detected on [date] — human intervention required").
 
-**Test file:** add to `usecase/report_test.go`
+**Test file:** add to `internal/report_test.go`
 
 ```go
 // TestReportPhase_IncludesBlockAlert: when block item present in DynamoDB, BlockAlert=true
@@ -2046,7 +2044,7 @@ go test -race ./...
 go test -tags integration ./...
 
 # Run single test
-go test -run TestProspect_Transition_Valid ./domain/...
+go test -run TestProspect_Transition_Valid ./internal/...
 
 # Vet
 go vet ./...

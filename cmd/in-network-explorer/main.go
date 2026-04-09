@@ -10,7 +10,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/pavlomaksymov/in-network-explorer/infrastructure"
+	"github.com/pavlomaksymov/in-network-explorer/internal/config"
 )
 
 // newLogger creates a structured JSON logger pre-configured with the given
@@ -34,7 +34,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	cfg := infrastructure.MustLoad()
+	cfg := config.MustLoad()
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()

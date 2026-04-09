@@ -1,4 +1,4 @@
-package domain
+package explorer
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 )
 
 // ProspectRepository is the persistence abstraction for Prospect aggregates.
-// Implementations live in adapter/dynamo.
+// Implementations live in internal/dynamo.
 type ProspectRepository interface {
 	// Save creates or fully replaces the prospect record.
 	Save(ctx context.Context, p *Prospect) error
@@ -28,7 +28,7 @@ type ProspectRepository interface {
 }
 
 // RateLimiter enforces daily action caps per scope (e.g. "profile_views",
-// "connection_requests"). Implementations live in adapter/dynamo.
+// "connection_requests"). Implementations live in internal/dynamo.
 type RateLimiter interface {
 	// Acquire increments the counter for scope. Returns ErrRateLimitExceeded
 	// if the daily cap has already been reached.

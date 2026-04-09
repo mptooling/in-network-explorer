@@ -76,7 +76,7 @@ IAM roles for DynamoDB and Bedrock access.
 5. **Availability** — graceful shutdown, retries with backoff for external calls.
 
 **Patterns:**
-- **Clean Architecture layers:** `domain/` (entities, value objects), `usecase/` (business logic), `adapter/` (HTTP, CLI, DB implementations), `infrastructure/` (AWS clients, config).
+- **Ben Johnson flat layout:** `internal/` (package `explorer` — domain entities, value objects, interfaces, use cases), `internal/config/` (env config, AWS client factories), `internal/{dynamo,bedrock,linkedin,qdrant}/` (adapter implementations), `internal/jitter/` (anti-detection timing).
 - **DDD when warranted:** Use aggregates and domain events for the prospect lifecycle (Scanned → Liked → Drafted → Sent). Don't force DDD on simple CRUD.
 - **TDD always:** Write the test first. Red → Green → Refactor. Table-driven tests. Use interfaces for test doubles — no mocking frameworks unless truly necessary.
 - **Configuration:** All config via environment variables. Use a single config struct loaded at startup. No hardcoded values.

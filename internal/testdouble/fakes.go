@@ -1,4 +1,4 @@
-// Package testdouble provides in-memory implementations of all domain
+// Package testdouble provides in-memory implementations of all explorer
 // interfaces for use in unit tests. Never import this package from production
 // code.
 package testdouble
@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pavlomaksymov/in-network-explorer/domain"
+	explorer "github.com/pavlomaksymov/in-network-explorer/internal"
 )
 
 // ── FakeProspectRepository ──────────────────────────────────────────────────
@@ -18,19 +18,19 @@ import (
 // FakeProspectRepository is a thread-safe in-memory prospect store.
 type FakeProspectRepository struct {
 	mu      sync.RWMutex
-	records map[string]*domain.Prospect
+	records map[string]*explorer.Prospect
 }
 
 // NewFakeProspectRepository returns an initialised FakeProspectRepository.
 func NewFakeProspectRepository() *FakeProspectRepository {
-	return &FakeProspectRepository{records: make(map[string]*domain.Prospect)}
+	return &FakeProspectRepository{records: make(map[string]*explorer.Prospect)}
 }
 
 // Ensure compile-time interface satisfaction.
-var _ domain.ProspectRepository = (*FakeProspectRepository)(nil)
+var _ explorer.ProspectRepository = (*FakeProspectRepository)(nil)
 
 // Save creates or replaces the prospect keyed by ProfileURL.
-func (r *FakeProspectRepository) Save(_ context.Context, p *domain.Prospect) error {
+func (r *FakeProspectRepository) Save(_ context.Context, p *explorer.Prospect) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	clone := *p
@@ -38,20 +38,20 @@ func (r *FakeProspectRepository) Save(_ context.Context, p *domain.Prospect) err
 	return nil
 }
 
-// Get returns the prospect or domain.ErrNotFound.
-func (r *FakeProspectRepository) Get(_ context.Context, profileURL string) (*domain.Prospect, error) {
+// Get returns the prospect or explorer.ErrNotFound.
+func (r *FakeProspectRepository) Get(_ context.Context, profileURL string) (*explorer.Prospect, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	p, ok := r.records[profileURL]
 	if !ok {
-		return nil, domain.ErrNotFound
+		return nil, explorer.ErrNotFound
 	}
 	clone := *p
 	return &clone, nil
 }
 
 // InsertIfNew writes the prospect only when no record exists for the URL.
-func (r *FakeProspectRepository) InsertIfNew(_ context.Context, p *domain.Prospect) (bool, error) {
+func (r *FakeProspectRepository) InsertIfNew(_ context.Context, p *explorer.Prospect) (bool, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if _, exists := r.records[p.ProfileURL]; exists {
@@ -63,10 +63,10 @@ func (r *FakeProspectRepository) InsertIfNew(_ context.Context, p *domain.Prospe
 }
 
 // ListByState returns prospects in state whose NextActionAt is at or before dueBy.
-func (r *FakeProspectRepository) ListByState(_ context.Context, state domain.State, dueBy time.Time) ([]*domain.Prospect, error) {
+func (r *FakeProspectRepository) ListByState(_ context.Context, state explorer.State, dueBy time.Time) ([]*explorer.Prospect, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	var out []*domain.Prospect
+	var out []*explorer.Prospect
 	for _, p := range r.records {
 		if p.State == state && !p.NextActionAt.After(dueBy) {
 			clone := *p
@@ -78,10 +78,10 @@ func (r *FakeProspectRepository) ListByState(_ context.Context, state domain.Sta
 
 // ListByStateOrderedByScore returns up to limit prospects in state, sorted by
 // WorthinessScore descending.
-func (r *FakeProspectRepository) ListByStateOrderedByScore(_ context.Context, state domain.State, limit int) ([]*domain.Prospect, error) {
+func (r *FakeProspectRepository) ListByStateOrderedByScore(_ context.Context, state explorer.State, limit int) ([]*explorer.Prospect, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	var out []*domain.Prospect
+	var out []*explorer.Prospect
 	for _, p := range r.records {
 		if p.State == state {
 			clone := *p
@@ -112,14 +112,14 @@ func NewFakeRateLimiter(max int) *FakeRateLimiter {
 }
 
 // Ensure compile-time interface satisfaction.
-var _ domain.RateLimiter = (*FakeRateLimiter)(nil)
+var _ explorer.RateLimiter = (*FakeRateLimiter)(nil)
 
 // Acquire increments the counter for scope or returns ErrRateLimitExceeded.
 func (rl *FakeRateLimiter) Acquire(_ context.Context, scope string) error {
 	rl.mu.Lock()
 	defer rl.mu.Unlock()
 	if rl.counts[scope] >= rl.max {
-		return domain.ErrRateLimitExceeded
+		return explorer.ErrRateLimitExceeded
 	}
 	rl.counts[scope]++
 	return nil
@@ -136,16 +136,16 @@ func (rl *FakeRateLimiter) Current(_ context.Context, scope string) (int, error)
 
 // FakeLLMClient returns configurable canned responses for LLM calls.
 type FakeLLMClient struct {
-	ScoreResult domain.ScoreResult
+	ScoreResult explorer.ScoreResult
 	CritiqueVal int
 	Err         error
 }
 
 // Ensure compile-time interface satisfaction.
-var _ domain.LLMClient = (*FakeLLMClient)(nil)
+var _ explorer.LLMClient = (*FakeLLMClient)(nil)
 
 // ScoreAndDraft returns the configured ScoreResult or Err.
-func (f *FakeLLMClient) ScoreAndDraft(_ context.Context, _ *domain.Prospect, _ []domain.Prospect) (domain.ScoreResult, error) {
+func (f *FakeLLMClient) ScoreAndDraft(_ context.Context, _ *explorer.Prospect, _ []explorer.Prospect) (explorer.ScoreResult, error) {
 	return f.ScoreResult, f.Err
 }
 
@@ -158,9 +158,9 @@ func (f *FakeLLMClient) Critique(_ context.Context, _ string) (int, error) {
 
 // FakeBrowserClient records calls and returns configurable responses.
 type FakeBrowserClient struct {
-	ProfileDataByURL map[string]domain.ProfileData
+	ProfileDataByURL map[string]explorer.ProfileData
 	SearchURLs       []string
-	Block            domain.BlockType
+	Block            explorer.BlockType
 	Err              error
 
 	VisitedURLs []string
@@ -168,10 +168,10 @@ type FakeBrowserClient struct {
 }
 
 // Ensure compile-time interface satisfaction.
-var _ domain.BrowserClient = (*FakeBrowserClient)(nil)
+var _ explorer.BrowserClient = (*FakeBrowserClient)(nil)
 
 // VisitProfile returns the configured ProfileData for the URL.
-func (f *FakeBrowserClient) VisitProfile(_ context.Context, profileURL string) (domain.ProfileData, error) {
+func (f *FakeBrowserClient) VisitProfile(_ context.Context, profileURL string) (explorer.ProfileData, error) {
 	f.VisitedURLs = append(f.VisitedURLs, profileURL)
 	return f.ProfileDataByURL[profileURL], f.Err
 }
@@ -188,7 +188,7 @@ func (f *FakeBrowserClient) SearchProfiles(_ context.Context, _, _ string, _ int
 }
 
 // CheckBlock returns the configured BlockType.
-func (f *FakeBrowserClient) CheckBlock(_ context.Context) (domain.BlockType, error) {
+func (f *FakeBrowserClient) CheckBlock(_ context.Context) (explorer.BlockType, error) {
 	return f.Block, f.Err
 }
 
@@ -204,7 +204,7 @@ type FakeEmbeddingClient struct {
 }
 
 // Ensure compile-time interface satisfaction.
-var _ domain.EmbeddingClient = (*FakeEmbeddingClient)(nil)
+var _ explorer.EmbeddingClient = (*FakeEmbeddingClient)(nil)
 
 // Embed returns the configured vector.
 func (f *FakeEmbeddingClient) Embed(_ context.Context, _ string) ([]float32, error) {
@@ -217,7 +217,7 @@ func (f *FakeEmbeddingClient) Embed(_ context.Context, _ string) ([]float32, err
 type FakeEmbeddingStore struct {
 	mu      sync.Mutex
 	points  map[string]fakePoint
-	Results []*domain.Prospect
+	Results []*explorer.Prospect
 	Err     error
 }
 
@@ -232,7 +232,7 @@ func NewFakeEmbeddingStore() *FakeEmbeddingStore {
 }
 
 // Ensure compile-time interface satisfaction.
-var _ domain.EmbeddingStore = (*FakeEmbeddingStore)(nil)
+var _ explorer.EmbeddingStore = (*FakeEmbeddingStore)(nil)
 
 // Upsert stores the vector and payload for id.
 func (s *FakeEmbeddingStore) Upsert(_ context.Context, id string, vector []float32, payload map[string]any) error {
@@ -246,7 +246,7 @@ func (s *FakeEmbeddingStore) Upsert(_ context.Context, id string, vector []float
 }
 
 // SearchSimilar returns the pre-configured Results slice.
-func (s *FakeEmbeddingStore) SearchSimilar(_ context.Context, _ []float32, _ map[string]any, topK int) ([]*domain.Prospect, error) {
+func (s *FakeEmbeddingStore) SearchSimilar(_ context.Context, _ []float32, _ map[string]any, topK int) ([]*explorer.Prospect, error) {
 	if s.Err != nil {
 		return nil, s.Err
 	}

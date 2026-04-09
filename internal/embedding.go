@@ -1,16 +1,16 @@
-package domain
+package explorer
 
 import "context"
 
 // EmbeddingClient converts text to a dense vector representation.
-// Implementations live in adapter/bedrock.
+// Implementations live in internal/bedrock.
 type EmbeddingClient interface {
 	// Embed returns the embedding vector for the given text.
 	Embed(ctx context.Context, text string) ([]float32, error)
 }
 
 // EmbeddingStore is the vector database abstraction for semantic search over
-// prospect profiles. Implementations live in adapter/qdrant.
+// prospect profiles. Implementations live in internal/qdrant.
 type EmbeddingStore interface {
 	// Upsert inserts or updates a vector point identified by id with the given
 	// payload metadata.
