@@ -13,20 +13,23 @@ func BezierGuide(start, end Point) GuideFunc {
 	dx := end.X - start.X
 	dy := end.Y - start.Y
 	dist := math.Sqrt(dx*dx + dy*dy)
+	steps := clampInt(int(dist/3.0), 10, 80)
 
-	steps := int(dist / 3.0)
-	if steps < 10 {
-		steps = 10
-	}
-	if steps > 80 {
-		steps = 80
-	}
+	cp1, cp2 := bezierControlPoints(start, dx, dy, dist)
+	points := computeBezierPoints(start, end, cp1, cp2, steps)
 
-	// Perpendicular direction (unit vector).
+	idx := 0
+	return func() (Point, bool) {
+		p := points[idx]
+		idx++
+		return p, idx > steps
+	}
+}
+
+func bezierControlPoints(start Point, dx, dy, dist float64) (Point, Point) {
 	perpX := -dy / dist
 	perpY := dx / dist
 
-	// Both control points on the same side.
 	side := 1.0
 	if rand.Float64() < 0.5 {
 		side = -1.0
@@ -43,24 +46,29 @@ func BezierGuide(start, end Point) GuideFunc {
 		X: start.X + 2*dx/3 + perpX*offset2,
 		Y: start.Y + 2*dy/3 + perpY*offset2,
 	}
+	return cp1, cp2
+}
 
-	// Pre-compute all points with ease-in/ease-out parameter mapping.
+func computeBezierPoints(start, end, cp1, cp2 Point, steps int) []Point {
 	points := make([]Point, steps+1)
 	for i := 0; i <= steps; i++ {
-		// Smoothstep: start slow, speed up in middle, slow down at end.
 		s := float64(i) / float64(steps)
-		t := s * s * (3 - 2*s)
+		t := s * s * (3 - 2*s) // smoothstep ease-in/ease-out
 		u := 1 - t
 		points[i] = Point{
 			X: u*u*u*start.X + 3*u*u*t*cp1.X + 3*u*t*t*cp2.X + t*t*t*end.X,
 			Y: u*u*u*start.Y + 3*u*u*t*cp1.Y + 3*u*t*t*cp2.Y + t*t*t*end.Y,
 		}
 	}
+	return points
+}
 
-	idx := 0
-	return func() (Point, bool) {
-		p := points[idx]
-		idx++
-		return p, idx > steps
+func clampInt(v, lo, hi int) int {
+	if v < lo {
+		return lo
 	}
+	if v > hi {
+		return hi
+	}
+	return v
 }

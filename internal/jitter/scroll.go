@@ -38,37 +38,43 @@ func HumanScroll(ctx context.Context, mouse ScrollMouse, totalPixels float64, sl
 			return ctx.Err()
 		}
 
-		chunk := LogNormalSample(120, 0.4)
-		chunk = math.Min(chunk, 250) // cap at 250px
-		chunk = math.Min(chunk, totalPixels-scrolled)
-		chunk = math.Max(chunk, 1) // at least 1px
-		steps := int(chunk/15) + 1
-
-		if err := mouse.Scroll(0, chunk, steps); err != nil {
+		chunk := scrollChunk(totalPixels - scrolled)
+		if err := mouse.Scroll(0, chunk, int(chunk/15)+1); err != nil {
 			return err
 		}
 		scrolled += chunk
 
-		// One upward re-read reversal per session.
 		if doReversal && !reversed && scrolled > totalPixels*0.3 {
 			reversed = true
-			reversal := LogNormalSample(80, 0.3)
-			reverseSteps := int(reversal/15) + 1
-			if err := mouse.Scroll(0, -reversal, reverseSteps); err != nil {
-				return err
-			}
-			// Pause while "re-reading".
-			if err := sleep(ctx, LogNormalDuration(400*time.Millisecond, 0.5)); err != nil {
+			if err := scrollReversal(ctx, mouse, sleep); err != nil {
 				return err
 			}
 		}
 
-		// Reading pause between chunks.
 		if scrolled < totalPixels {
-			if err := sleep(ctx, LogNormalDuration(400*time.Millisecond, 0.5)); err != nil {
+			if err := readingPause(ctx, sleep); err != nil {
 				return err
 			}
 		}
 	}
 	return nil
+}
+
+func scrollChunk(remaining float64) float64 {
+	chunk := LogNormalSample(120, 0.4)
+	chunk = math.Min(chunk, 250)
+	chunk = math.Min(chunk, remaining)
+	return math.Max(chunk, 1)
+}
+
+func scrollReversal(ctx context.Context, mouse ScrollMouse, sleep Sleeper) error {
+	reversal := LogNormalSample(80, 0.3)
+	if err := mouse.Scroll(0, -reversal, int(reversal/15)+1); err != nil {
+		return err
+	}
+	return readingPause(ctx, sleep)
+}
+
+func readingPause(ctx context.Context, sleep Sleeper) error {
+	return sleep(ctx, LogNormalDuration(400*time.Millisecond, 0.5))
 }

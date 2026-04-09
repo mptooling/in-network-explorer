@@ -33,44 +33,42 @@ func HumanType(ctx context.Context, kb Keyboard, text string, sleep Sleeper) err
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
-
-		// Inter-keystroke delay (skip before first character).
 		if i > 0 {
-			bigram := false
-			if i < len(lower) {
-				pair := lower[i-1 : i+1]
-				bigram = commonBigrams[pair]
-			}
-			delay := IKIDuration(60, bigram)
-			if err := sleep(ctx, delay); err != nil {
+			if err := interKeystrokeDelay(ctx, sleep, lower, i); err != nil {
 				return err
 			}
 		}
-
-		// Simulate occasional typo: press wrong key, then backspace and correct.
 		if rand.Float64() < typingErrorRate {
-			wrong := neighborKey(ch)
-			if err := kb.Press(wrong); err != nil {
-				return err
-			}
-			// Brief pause before noticing the error.
-			if err := sleep(ctx, IKIDuration(60, false)); err != nil {
-				return err
-			}
-			if err := kb.Backspace(); err != nil {
-				return err
-			}
-			// Brief pause before retyping.
-			if err := sleep(ctx, IKIDuration(60, false)); err != nil {
+			if err := simulateTypo(ctx, kb, sleep, ch); err != nil {
 				return err
 			}
 		}
-
 		if err := kb.Press(ch); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func interKeystrokeDelay(ctx context.Context, sleep Sleeper, lower string, i int) error {
+	bigram := false
+	if i < len(lower) {
+		bigram = commonBigrams[lower[i-1:i+1]]
+	}
+	return sleep(ctx, IKIDuration(60, bigram))
+}
+
+func simulateTypo(ctx context.Context, kb Keyboard, sleep Sleeper, correct rune) error {
+	if err := kb.Press(neighborKey(correct)); err != nil {
+		return err
+	}
+	if err := sleep(ctx, IKIDuration(60, false)); err != nil {
+		return err
+	}
+	if err := kb.Backspace(); err != nil {
+		return err
+	}
+	return sleep(ctx, IKIDuration(60, false))
 }
 
 // neighborKey returns a plausible adjacent key for a typo. For simplicity,
