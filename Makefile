@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help dev dev-down dev-logs test test-integration lint build clean
+.PHONY: help dev dev-down dev-logs test test-integration lint build clean preview
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
@@ -33,6 +33,9 @@ lint: ## Run golangci-lint
 
 build: ## Build the binary
 	go build -o ./in-network-explorer ./cmd/in-network-explorer
+
+preview: ## Start HTML report preview with hot-reload (http://localhost:8085)
+	air -c .air.preview.toml
 
 clean: ## Remove build artifacts
 	rm -f ./in-network-explorer

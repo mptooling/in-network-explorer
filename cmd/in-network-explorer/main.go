@@ -22,24 +22,30 @@ func newLogger(w io.Writer, runID string) *slog.Logger {
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "usage: explorer [scrape|analyze|report|calibrate]")
+		fmt.Fprintln(os.Stderr, "usage: explorer [scrape|analyze|report|calibrate|preview]")
 		os.Exit(1)
 	}
 
 	cmd := os.Args[1]
 	switch cmd {
-	case "scrape", "analyze", "report", "calibrate":
+	case "scrape", "analyze", "report", "calibrate", "preview":
 	default:
 		fmt.Fprintf(os.Stderr, "unknown command: %s\n", cmd)
 		os.Exit(1)
 	}
 
-	cfg := config.MustLoad()
-
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
 	log := newLogger(os.Stdout, rand.Text())
+
+	// preview needs no infrastructure config — handle it before MustLoad.
+	if cmd == "preview" {
+		runPreview(ctx, log)
+		return
+	}
+
+	cfg := config.MustLoad()
 
 	switch cmd {
 	case "scrape":
