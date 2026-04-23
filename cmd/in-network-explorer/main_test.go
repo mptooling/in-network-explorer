@@ -79,10 +79,20 @@ func TestCLI_UnknownCommand(t *testing.T) {
 }
 
 func TestCLI_KnownCommands(t *testing.T) {
-	commands := []string{"scrape", "analyze", "report", "calibrate"}
+	// Each command should run without panicking and produce log output.
+	// Commands that need unimplemented adapters log an error and exit 0.
+	cases := []struct {
+		name     string
+		wantLike string // substring expected in stdout
+	}{
+		{"scrape", "SEARCH_QUERY"},
+		{"analyze", "not yet implemented"},
+		{"report", "report"},
+		{"calibrate", "not yet implemented"},
+	}
 
-	for _, name := range commands {
-		t.Run(name, func(t *testing.T) {
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
 			dir := t.TempDir()
 			// Create empty .env so loadDotEnv does not panic.
 			if err := os.WriteFile(filepath.Join(dir, ".env"), []byte(""), 0o644); err != nil {
@@ -90,11 +100,12 @@ func TestCLI_KnownCommands(t *testing.T) {
 			}
 
 			ctx := context.Background()
-			cmd := exec.CommandContext(ctx, binaryPath, name)
+			cmd := exec.CommandContext(ctx, binaryPath, tc.name)
 			cmd.Dir = dir
 			cmd.Env = append(os.Environ(),
 				"AWS_REGION=eu-central-1",
 				"DYNAMO_TABLE=prospects",
+				"DYNAMO_ENDPOINT=http://localhost:1", // unreachable, fails fast
 				"LINKEDIN_COOKIES_SECRET=arn:aws:secretsmanager:eu-central-1:123:secret:test",
 				"CHROME_PROFILE_DIR=/tmp/chrome-test",
 			)
@@ -104,11 +115,11 @@ func TestCLI_KnownCommands(t *testing.T) {
 			cmd.Stderr = &stderr
 
 			if err := cmd.Run(); err != nil {
-				t.Fatalf("command %q failed: %v\nstdout: %s\nstderr: %s", name, err, stdout.String(), stderr.String())
+				t.Fatalf("command %q failed: %v\nstdout: %s\nstderr: %s", tc.name, err, stdout.String(), stderr.String())
 			}
 
-			if !strings.Contains(stdout.String(), "not yet implemented") {
-				t.Errorf("stdout = %q, want it to contain \"not yet implemented\"", stdout.String())
+			if !strings.Contains(stdout.String(), tc.wantLike) {
+				t.Errorf("stdout = %q, want it to contain %q", stdout.String(), tc.wantLike)
 			}
 		})
 	}

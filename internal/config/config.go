@@ -38,6 +38,10 @@ type Config struct {
 	QdrantAddr       string // QDRANT_ADDR, default: localhost:6334
 	QdrantCollection string // QDRANT_COLLECTION, default: prospects
 
+	// Search
+	SearchQuery    string // SEARCH_QUERY, optional (e.g., "software engineer")
+	SearchLocation string // SEARCH_LOCATION, optional (e.g., "Berlin")
+
 	// Operational
 	MaxProfileViewsPerDay   int    // MAX_PROFILE_VIEWS_PER_DAY, default: 40
 	MaxConnectionReqsPerDay int    // MAX_CONNECTION_REQS_PER_DAY, default: 10
@@ -45,6 +49,7 @@ type Config struct {
 	AnalyzeConcurrency      int    // ANALYZE_CONCURRENCY, default: 3
 	MaxNavsBeforeRestart    int    // BROWSER_MAX_NAVS, default: 50
 	PromptConfigPath        string // PROMPT_CONFIG_PATH, default: prompts/scoring.json
+	ReportOutputDir         string // REPORT_OUTPUT_DIR, default: reports
 }
 
 // MustLoad loads a .env file (if present) and reads all configuration from
@@ -73,12 +78,16 @@ func MustLoad() Config {
 		QdrantAddr:       envOrDefault("QDRANT_ADDR", "localhost:6334"),
 		QdrantCollection: envOrDefault("QDRANT_COLLECTION", "prospects"),
 
+		SearchQuery:    os.Getenv("SEARCH_QUERY"),
+		SearchLocation: os.Getenv("SEARCH_LOCATION"),
+
 		MaxProfileViewsPerDay:   envOrDefaultInt("MAX_PROFILE_VIEWS_PER_DAY", 40),
 		MaxConnectionReqsPerDay: envOrDefaultInt("MAX_CONNECTION_REQS_PER_DAY", 10),
 		MaxProspectsPerRun:      envOrDefaultInt("MAX_PROSPECTS_PER_RUN", 20),
 		AnalyzeConcurrency:      envOrDefaultInt("ANALYZE_CONCURRENCY", 3),
 		MaxNavsBeforeRestart:    envOrDefaultInt("BROWSER_MAX_NAVS", 50),
 		PromptConfigPath:        envOrDefault("PROMPT_CONFIG_PATH", "prompts/scoring.json"),
+		ReportOutputDir:         envOrDefault("REPORT_OUTPUT_DIR", "reports"),
 	}
 
 	cfg.BedrockRegion = envOrDefault("BEDROCK_REGION", cfg.AWSRegion)
