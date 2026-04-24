@@ -22,13 +22,13 @@ func newLogger(w io.Writer, runID string) *slog.Logger {
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "usage: explorer [scrape|analyze|report|calibrate]")
+		fmt.Fprintln(os.Stderr, "usage: explorer [scrape|analyze|report|calibrate|preview]")
 		os.Exit(1)
 	}
 
 	cmd := os.Args[1]
 	switch cmd {
-	case "scrape", "analyze", "report", "calibrate":
+	case "scrape", "analyze", "report", "calibrate", "preview":
 	default:
 		fmt.Fprintf(os.Stderr, "unknown command: %s\n", cmd)
 		os.Exit(1)
@@ -50,5 +50,7 @@ func main() {
 		runReport(ctx, cfg, log)
 	case "calibrate":
 		runCalibrate(ctx, cfg, log)
+	case "preview":
+		runPreview(ctx, cfg, log)
 	}
 }

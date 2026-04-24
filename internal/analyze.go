@@ -4,22 +4,37 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 )
 
 // AnalyzeUseCase scores Liked prospects via LLM and drafts connection messages.
-// Prospects transition from StateLiked to StateDrafted.
+// Prospects transition from StateLiked to StateDrafted. When embedding deps
+// are provided, it also upserts profile vectors for semantic search.
 type AnalyzeUseCase struct {
 	repo    ProspectRepository
 	llm     LLMClient
+	embedCl EmbeddingClient // nil = skip embedding
+	embedSt EmbeddingStore  // nil = skip embedding
 	log     *slog.Logger
-	fewShot int // number of high-scoring examples for few-shot prompting
+	fewShot int
 }
 
 // NewAnalyzeUseCase creates an AnalyzeUseCase. fewShot controls how many
 // top-scored existing prospects are used as few-shot examples (0 = none).
-func NewAnalyzeUseCase(repo ProspectRepository, llm LLMClient, log *slog.Logger, fewShot int) *AnalyzeUseCase {
-	return &AnalyzeUseCase{repo: repo, llm: llm, log: log, fewShot: fewShot}
+// embedClient and embedStore are optional — pass nil to skip vector indexing.
+func NewAnalyzeUseCase(
+	repo ProspectRepository,
+	llm LLMClient,
+	log *slog.Logger,
+	fewShot int,
+	embedClient EmbeddingClient,
+	embedStore EmbeddingStore,
+) *AnalyzeUseCase {
+	return &AnalyzeUseCase{
+		repo: repo, llm: llm, log: log, fewShot: fewShot,
+		embedCl: embedClient, embedSt: embedStore,
+	}
 }
 
 // Run scores all Liked prospects whose NextActionAt is due.
@@ -47,6 +62,7 @@ func (uc *AnalyzeUseCase) Run(ctx context.Context) error {
 			uc.log.WarnContext(ctx, "score failed", "url", p.ProfileURL, "error", err)
 			continue
 		}
+		uc.embedOne(ctx, p)
 	}
 	return nil
 }
@@ -90,4 +106,30 @@ func (uc *AnalyzeUseCase) scoreOne(ctx context.Context, p *Prospect, examples []
 		"critique", result.CritiqueScore,
 	)
 	return nil
+}
+
+// embedOne generates and stores a vector for the prospect's profile text.
+// Failures are logged but do not halt the pipeline.
+func (uc *AnalyzeUseCase) embedOne(ctx context.Context, p *Prospect) {
+	if uc.embedCl == nil || uc.embedSt == nil {
+		return
+	}
+
+	text := strings.Join([]string{p.Name, p.Headline, p.Location, p.About}, " — ")
+	vec, err := uc.embedCl.Embed(ctx, text)
+	if err != nil {
+		uc.log.WarnContext(ctx, "embed failed", "url", p.ProfileURL, "error", err)
+		return
+	}
+
+	payload := map[string]any{
+		"profile_url":      p.ProfileURL,
+		"name":             p.Name,
+		"headline":         p.Headline,
+		"location":         p.Location,
+		"worthiness_score": p.WorthinessScore,
+	}
+	if err := uc.embedSt.Upsert(ctx, p.Slug, vec, payload); err != nil {
+		uc.log.WarnContext(ctx, "upsert embedding failed", "url", p.ProfileURL, "error", err)
+	}
 }

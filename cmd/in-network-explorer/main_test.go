@@ -89,6 +89,7 @@ func TestCLI_KnownCommands(t *testing.T) {
 		{"analyze", "analyze failed"},
 		{"report", "report"},
 		{"calibrate", "calibrate failed"},
+		{"preview", "report generation failed"},
 	}
 
 	for _, tc := range cases {

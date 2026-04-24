@@ -22,7 +22,7 @@ func runAnalyze(ctx context.Context, cfg config.Config, log *slog.Logger) {
 	}
 	llm := bedrock.NewClient(bc, cfg.BedrockModelID)
 
-	uc := explorer.NewAnalyzeUseCase(repo, llm, log, cfg.AnalyzeConcurrency)
+	uc := explorer.NewAnalyzeUseCase(repo, llm, log, cfg.AnalyzeConcurrency, nil, nil)
 	if err := uc.Run(ctx); err != nil {
 		log.ErrorContext(ctx, "analyze failed", "error", err)
 	}

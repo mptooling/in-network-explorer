@@ -26,7 +26,7 @@ func TestAnalyzeUseCase_ScoresAndDrafts(t *testing.T) {
 			CritiqueScore: 12,
 		},
 	}
-	uc := explorer.NewAnalyzeUseCase(repo, llm, nopLog, 0)
+	uc := explorer.NewAnalyzeUseCase(repo, llm, nopLog, 0, nil, nil)
 
 	if err := uc.Run(context.Background()); err != nil {
 		t.Fatalf("Run: %v", err)
@@ -56,7 +56,7 @@ func TestAnalyzeUseCase_SkipsNotDue(t *testing.T) {
 	llm := &testdouble.FakeLLMClient{
 		ScoreResult: explorer.ScoreResult{Score: 5, Message: "msg"},
 	}
-	uc := explorer.NewAnalyzeUseCase(repo, llm, nopLog, 0)
+	uc := explorer.NewAnalyzeUseCase(repo, llm, nopLog, 0, nil, nil)
 
 	if err := uc.Run(context.Background()); err != nil {
 		t.Fatalf("Run: %v", err)
@@ -90,7 +90,7 @@ func TestAnalyzeUseCase_UsesFewShotExamples(t *testing.T) {
 	llm := &testdouble.FakeLLMClient{
 		ScoreResult: explorer.ScoreResult{Score: 7, Message: "msg", CritiqueScore: 10},
 	}
-	uc := explorer.NewAnalyzeUseCase(repo, llm, nopLog, 3)
+	uc := explorer.NewAnalyzeUseCase(repo, llm, nopLog, 3, nil, nil)
 
 	if err := uc.Run(context.Background()); err != nil {
 		t.Fatalf("Run: %v", err)
@@ -105,7 +105,7 @@ func TestAnalyzeUseCase_UsesFewShotExamples(t *testing.T) {
 func TestAnalyzeUseCase_NoProspects(t *testing.T) {
 	repo := testdouble.NewFakeProspectRepository()
 	llm := &testdouble.FakeLLMClient{}
-	uc := explorer.NewAnalyzeUseCase(repo, llm, nopLog, 0)
+	uc := explorer.NewAnalyzeUseCase(repo, llm, nopLog, 0, nil, nil)
 
 	if err := uc.Run(context.Background()); err != nil {
 		t.Fatalf("Run: %v", err)
