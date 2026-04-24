@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	explorer "github.com/pavlomaksymov/in-network-explorer/internal"
+	"github.com/pavlomaksymov/in-network-explorer/internal/bedrock"
 	"github.com/pavlomaksymov/in-network-explorer/internal/config"
 )
 
@@ -14,8 +15,22 @@ func runCalibrate(ctx context.Context, cfg config.Config, log *slog.Logger) {
 		return
 	}
 
-	// LLMClient adapter is not yet implemented. When internal/bedrock is
-	// ready, construct it here and pass to NewCalibrateUseCase.
-	log.ErrorContext(ctx, "LLM adapter not yet implemented — calibrate requires internal/bedrock")
-	_ = explorer.NewCalibrateUseCase(repo, nil, log, 10)
+	bc, err := config.NewBedrockClient(ctx, cfg)
+	if err != nil {
+		log.ErrorContext(ctx, "bedrock client", "error", err)
+		return
+	}
+	llm := bedrock.NewClient(bc, cfg.BedrockModelID)
+
+	uc := explorer.NewCalibrateUseCase(repo, llm, log, 10)
+	result, err := uc.Run(ctx)
+	if err != nil {
+		log.ErrorContext(ctx, "calibrate failed", "error", err)
+		return
+	}
+	log.InfoContext(ctx, "calibration result",
+		"checked", result.Checked,
+		"mean_diff", result.MeanDiff,
+		"max_diff", result.MaxDiff,
+	)
 }

@@ -86,9 +86,9 @@ func TestCLI_KnownCommands(t *testing.T) {
 		wantLike string // substring expected in stdout
 	}{
 		{"scrape", "SEARCH_QUERY"},
-		{"analyze", "not yet implemented"},
+		{"analyze", "analyze failed"},
 		{"report", "report"},
-		{"calibrate", "not yet implemented"},
+		{"calibrate", "calibrate failed"},
 	}
 
 	for _, tc := range cases {
